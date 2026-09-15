@@ -1,62 +1,79 @@
 import { Request, Response } from "express";
-import { findings } from "../data/findings.data";
-import { resources } from "../data/resources.data";
+import prisma from "../lib/prisma";
 
-export const getSecurityPosture = (_req: Request, res: Response) => {
-  const critical = findings.filter(
-    (finding) => finding.severity === "Critical"
-  ).length;
+export const getSecurityPosture = async (
+  _req: Request,
+  res: Response
+) => {
+  try {
+    const findings = await prisma.finding.findMany();
 
-  const high = findings.filter(
-    (finding) => finding.severity === "High"
-  ).length;
+    const resources = await prisma.resource.findMany();
 
-  const medium = findings.filter(
-    (finding) => finding.severity === "Medium"
-  ).length;
+    const critical = findings.filter(
+      (finding) => finding.severity === "Critical"
+    ).length;
 
-  const low = findings.filter(
-    (finding) => finding.severity === "Low"
-  ).length;
+    const high = findings.filter(
+      (finding) => finding.severity === "High"
+    ).length;
 
-  const totalFindings = findings.length;
+    const medium = findings.filter(
+      (finding) => finding.severity === "Medium"
+    ).length;
 
-  // Simple weighted risk calculation
-  const riskPoints =
-    critical * 20 +
-    high * 10 +
-    medium * 5 +
-    low * 2;
+    const low = findings.filter(
+      (finding) => finding.severity === "Low"
+    ).length;
 
-  const securityScore = Math.max(
-    0,
-    Math.min(100, 100 - riskPoints)
-  );
+    const totalFindings = findings.length;
 
-  const healthyResources = resources.filter(
-    (resource) => resource.status === "Healthy"
-  ).length;
+    const riskPoints =
+      critical * 20 +
+      high * 10 +
+      medium * 5 +
+      low * 2;
 
-  const resourceHealth = Math.round(
-    (healthyResources / resources.length) * 100
-  );
+    const securityScore = Math.max(
+      0,
+      Math.min(100, 100 - riskPoints)
+    );
 
-  res.json({
-    success: true,
-    data: {
-      securityScore,
-      totalFindings,
-      severity: {
-        critical,
-        high,
-        medium,
-        low,
+    const healthyResources = resources.filter(
+      (resource) => resource.status === "Healthy"
+    ).length;
+
+    const resourceHealth =
+      resources.length === 0
+        ? 0
+        : Math.round(
+            (healthyResources / resources.length) * 100
+          );
+
+    res.json({
+      success: true,
+      data: {
+        securityScore,
+        totalFindings,
+        severity: {
+          critical,
+          high,
+          medium,
+          low,
+        },
+        resources: {
+          total: resources.length,
+          healthy: healthyResources,
+          healthPercentage: resourceHealth,
+        },
       },
-      resources: {
-        total: resources.length,
-        healthy: healthyResources,
-        healthPercentage: resourceHealth,
-      },
-    },
-  });
+    });
+  } catch (error) {
+    console.error("Failed to calculate security posture:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to calculate security posture",
+    });
+  }
 };
