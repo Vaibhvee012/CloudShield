@@ -1,7 +1,19 @@
 const API_BASE_URL = "http://localhost:5000/api";
 
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("cloudshield_token");
+
+  return token
+    ? {
+        Authorization: `Bearer ${token}`,
+      }
+    : {};
+};
+
 export const getSecurityPosture = async () => {
-  const response = await fetch(`${API_BASE_URL}/security`);
+  const response = await fetch(`${API_BASE_URL}/security`, {
+    headers: getAuthHeaders(),
+  });
 
   if (!response.ok) {
     throw new Error("Failed to fetch security posture");
@@ -11,7 +23,9 @@ export const getSecurityPosture = async () => {
 };
 
 export const getResources = async () => {
-  const response = await fetch(`${API_BASE_URL}/resources`);
+  const response = await fetch(`${API_BASE_URL}/resources`, {
+    headers: getAuthHeaders(),
+  });
 
   if (!response.ok) {
     throw new Error("Failed to fetch resources");
@@ -21,7 +35,9 @@ export const getResources = async () => {
 };
 
 export const getFindings = async () => {
-  const response = await fetch(`${API_BASE_URL}/findings`);
+  const response = await fetch(`${API_BASE_URL}/findings`, {
+    headers: getAuthHeaders(),
+  });
 
   if (!response.ok) {
     throw new Error("Failed to fetch findings");
@@ -31,7 +47,9 @@ export const getFindings = async () => {
 };
 
 export const getRemediationActions = async () => {
-  const response = await fetch(`${API_BASE_URL}/remediation`);
+  const response = await fetch(`${API_BASE_URL}/remediation`, {
+    headers: getAuthHeaders(),
+  });
 
   if (!response.ok) {
     throw new Error("Failed to fetch remediation actions");

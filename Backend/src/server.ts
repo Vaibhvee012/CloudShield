@@ -7,6 +7,8 @@ import resourcesRoutes from "./routes/resources.routes";
 import findingsRoutes from "./routes/findings.routes";
 import securityRoutes from "./routes/security.routes";
 import remediationRoutes from "./routes/remediation.routes";
+import authRoutes from "./routes/auth.routes";
+import "dotenv/config";
 
 dotenv.config();
 
@@ -16,12 +18,14 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
+
 // Routes
 app.use("/api/health", healthRoutes);
 app.use("/api/resources", resourcesRoutes);
 app.use("/api/findings", findingsRoutes);
 app.use("/api/security", securityRoutes);
 app.use("/api/remediation", remediationRoutes);
+app.use("/api/auth", authRoutes);
 
 const PORT = process.env.PORT || 5000;
 

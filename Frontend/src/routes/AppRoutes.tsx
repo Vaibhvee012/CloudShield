@@ -10,11 +10,17 @@ import AIAssistant from "../pages/AIAssistant";
 import Remediation from "../pages/Remediation";
 import AuditLogs from "../pages/AuditLogs";
 import Settings from "../pages/Settings";
+import Login from "../pages/Login";
 
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/login" element={<Login />} />
+
+      <Route
+        path="/"
+        element={<Navigate to="/dashboard" replace />}
+      />
 
       <Route element={<DashboardLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />

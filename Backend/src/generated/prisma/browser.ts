@@ -32,3 +32,8 @@ export type Finding = Prisma.FindingModel
  * 
  */
 export type RemediationAction = Prisma.RemediationActionModel
+/**
+ * Model User
+ * 
+ */
+export type User = Prisma.UserModel

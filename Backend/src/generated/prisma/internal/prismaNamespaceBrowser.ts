@@ -53,7 +53,8 @@ export const AnyNull = runtime.AnyNull
 export const ModelName = {
   Resource: 'Resource',
   Finding: 'Finding',
-  RemediationAction: 'RemediationAction'
+  RemediationAction: 'RemediationAction',
+  User: 'User'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -116,6 +117,19 @@ export const RemediationActionScalarFieldEnum = {
 } as const
 
 export type RemediationActionScalarFieldEnum = (typeof RemediationActionScalarFieldEnum)[keyof typeof RemediationActionScalarFieldEnum]
+
+
+export const UserScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  email: 'email',
+  password: 'password',
+  role: 'role',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
 
 
 export const SortOrder = {
