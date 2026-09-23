@@ -1,7 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import DashboardLayout from "../layouts/DashboardLayout";
-
 import Dashboard from "../pages/Dashboard";
 import Resources from "../pages/Resources";
 import Findings from "../pages/Findings";
@@ -10,12 +9,15 @@ import AIAssistant from "../pages/AIAssistant";
 import Remediation from "../pages/Remediation";
 import AuditLogs from "../pages/AuditLogs";
 import Settings from "../pages/Settings";
+
 import Login from "../pages/Login";
+import Register from "../pages/Register";
 
 function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
 
       <Route
         path="/"
