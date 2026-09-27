@@ -1,12 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma";
 
-export const getResources = async (req: Request, res: Response) => {
-  console.log(
-    "Authorization header:",
-    req.headers.authorization ? "[TOKEN]" : "undefined"
-  );
-
+export const getResources = async (_req: Request, res: Response) => {
   try {
     const resources = await prisma.resource.findMany({
       orderBy: {

@@ -21,7 +21,6 @@ app.use(express.json());
 
 
 // Routes
-// Routes
 app.use("/api/health", healthRoutes);
 app.use("/api/resources", resourcesRoutes);
 app.use("/api/findings", findingsRoutes);
