@@ -11,19 +11,19 @@ export const getSecurityPosture = async (
     const resources = await prisma.resource.findMany();
 
     const critical = findings.filter(
-      (finding) => finding.severity === "Critical"
+      (finding) => finding.severity === "CRITICAL"
     ).length;
 
     const high = findings.filter(
-      (finding) => finding.severity === "High"
+      (finding) => finding.severity === "HIGH"
     ).length;
 
     const medium = findings.filter(
-      (finding) => finding.severity === "Medium"
+      (finding) => finding.severity === "MEDIUM"
     ).length;
 
     const low = findings.filter(
-      (finding) => finding.severity === "Low"
+      (finding) => finding.severity === "LOW"
     ).length;
 
     const totalFindings = findings.length;
@@ -40,7 +40,10 @@ export const getSecurityPosture = async (
     );
 
     const healthyResources = resources.filter(
-      (resource) => resource.status === "Healthy"
+      (resource) =>
+        resource.status === "Healthy" ||
+        resource.status === "running" ||
+        resource.status === "available"
     ).length;
 
     const resourceHealth =
@@ -69,7 +72,10 @@ export const getSecurityPosture = async (
       },
     });
   } catch (error) {
-    console.error("Failed to calculate security posture:", error);
+    console.error(
+      "Failed to calculate security posture:",
+      error
+    );
 
     res.status(500).json({
       success: false,
