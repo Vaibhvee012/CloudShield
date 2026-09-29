@@ -4,6 +4,9 @@ import prisma from "../lib/prisma";
 export const getFindings = async (_req: Request, res: Response) => {
   try {
     const findings = await prisma.finding.findMany({
+      include: {
+        resource: true,
+      },
       orderBy: {
         createdAt: "desc",
       },

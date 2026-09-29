@@ -37,6 +37,8 @@ export const authenticate = (
 
     next();
   } catch (error) {
+    console.error("JWT VERIFY ERROR:", error);
+
     return res.status(401).json({
       success: false,
       message: "Invalid or expired token",

@@ -5,6 +5,9 @@ import { getS3Buckets } from "../services/s3Service";
 import { getRDSInstances } from "../services/rdsService";
 import { discoverAWSResources } from "../services/awsResourceService";
 import { syncAWSResources } from "../services/awsResourcePersistence";
+import { checkS3PublicAccess } from "../services/s3SecurityService";
+import { scanS3Security } from "../services/s3SecurityService";
+import { syncS3SecurityFindings } from "../services/securityFindingService";
 
 const router = Router();
 
@@ -115,6 +118,71 @@ router.post("/sync", async (_req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to sync AWS resources",
+    });
+  }
+});
+
+
+
+router.get("/security/s3", async (req, res) => {
+  try {
+    const bucketName =
+      "aws-sam-cli-managed-default-samclisourcebucket-zmoh9fqnfqu5";
+
+    const result = await checkS3PublicAccess(bucketName);
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error("S3 security scan failed:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to scan S3 bucket",
+    });
+  }
+});
+
+
+router.get("/security/s3/scan", async (req, res) => {
+  try {
+    const results = await scanS3Security();
+
+    res.json({
+      success: true,
+      count: results.length,
+      data: results,
+    });
+  } catch (error) {
+    console.error("S3 security scan failed:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to scan S3 buckets",
+    });
+  }
+});
+
+router.post("/security/s3/sync", async (req, res) => {
+  try {
+    const findings = await syncS3SecurityFindings();
+
+    res.json({
+      success: true,
+      count: findings.length,
+      data: findings,
+    });
+  } catch (error) {
+    console.error(
+      "S3 security finding sync failed:",
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to sync S3 security findings",
     });
   }
 });

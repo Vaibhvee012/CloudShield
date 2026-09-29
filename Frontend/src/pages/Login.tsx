@@ -42,6 +42,7 @@ const Login = () => {
 
       const data = await response.json();
       console.log("LOGIN RESPONSE:", data);
+      console.log("LOGIN TOKEN:", data.data?.token);
 
       if (!response.ok) {
         throw new Error(data.message || "Login failed");
@@ -56,6 +57,8 @@ const Login = () => {
         "cloudshield_user",
         JSON.stringify(data.data.user)
       );
+      console.log("STORED TOKEN:",
+        localStorage.getItem("cloudshield_token"));
 
       navigate("/dashboard");
     } catch (error) {

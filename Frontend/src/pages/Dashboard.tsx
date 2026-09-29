@@ -28,8 +28,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-
-import { getSecurityPosture } from "../services/api";
+import { getSecurityPosture, getFindings, getRemediationActions } from "../services/api";
 
 type SecurityData = {
   score: number;
@@ -43,6 +42,30 @@ type SecurityData = {
   healthPercentage: number;
 };
 
+type Finding = {
+  id: string;
+  title: string;
+  severity: string;
+  resourceId: string;
+  resourceType: string;
+  region: string;
+  status: string;
+  category: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  resource: {
+    id: string;
+    name: string;
+    type: string;
+    region: string;
+    status: string;
+    environment: string;
+    riskLevel: string;
+    source: string;
+  };
+};
+
 const postureData = [
   { day: "01", score: 42 },
   { day: "05", score: 45 },
@@ -54,26 +77,7 @@ const postureData = [
   { day: "30", score: 55 },
 ];
 
-const findings = [
-  {
-    title: "Public S3 bucket detected",
-    resource: "production-assets",
-    severity: "Critical",
-    time: "2 min ago",
-  },
-  {
-    title: "Over-permissive IAM policy",
-    resource: "deployment-role",
-    severity: "High",
-    time: "8 min ago",
-  },
-  {
-    title: "Security group allows SSH",
-    resource: "api-server-sg",
-    severity: "High",
-    time: "14 min ago",
-  },
-];
+
 
 const activity = [
   {
@@ -116,35 +120,49 @@ const Dashboard = () => {
   });
 
   const [loading, setLoading] = useState(true);
+  const [findings, setFindings] = useState<Finding[]>([]);
+  const [remediationActions, setRemediationActions] = useState<any[]>([]);
 
-  useEffect(() => {
-    const loadSecurity = async () => {
-      try {
-        const response = await getSecurityPosture();
+useEffect(() => {
+  const loadDashboardData = async () => {
+    try {
+      const [
+  securityResponse,
+  findingsResponse,
+  remediationResponse,
+] = await Promise.all([
+  getSecurityPosture(),
+  getFindings(),
+  getRemediationActions(),
+]);
 
-        const data = response?.data ?? response;
+      const securityData = securityResponse.data;
 
-        setSecurity({
-          score: data.score ?? 55,
-          totalFindings: data.totalFindings ?? 4,
-          critical: data.critical ?? 1,
-          high: data.high ?? 2,
-          medium: data.medium ?? 1,
-          low: data.low ?? 0,
-          resourcesTotal: data.resourcesTotal ?? 5,
-          healthyResources: data.healthyResources ?? 2,
-          healthPercentage: data.healthPercentage ?? 40,
-        });
-      } catch (error) {
-        console.error("Failed to load security posture:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      setSecurity({
+        score: securityData.securityScore,
+        totalFindings: securityData.totalFindings,
 
-    loadSecurity();
-  }, []);
+        critical: securityData.severity.critical,
+        high: securityData.severity.high,
+        medium: securityData.severity.medium,
+        low: securityData.severity.low,
 
+        resourcesTotal: securityData.resources.total,
+        healthyResources: securityData.resources.healthy,
+        healthPercentage: securityData.resources.healthPercentage,
+      });
+
+      setFindings(findingsResponse.data);
+      setRemediationActions(remediationResponse.data);
+    } catch (error) {
+      console.error("Failed to load dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  loadDashboardData();
+}, []);
   const score = security.score;
 
   return (
@@ -597,18 +615,17 @@ const Dashboard = () => {
                 View all
               </button>
             </div>
-
-            <div className="mt-5 space-y-3">
-              {findings.map((finding) => (
-                <FindingCard
-                  key={finding.title}
-                  title={finding.title}
-                  resource={finding.resource}
-                  severity={finding.severity}
-                  time={finding.time}
-                />
-              ))}
-            </div>
+<div className="mt-5 space-y-3">
+  {findings.slice(0, 3).map((finding) => (
+    <FindingCard
+      key={finding.id}
+      title={finding.title}
+      resource={finding.resource.name}
+      severity={finding.severity}
+      time={formatFindingTime(finding.createdAt)}
+    />
+  ))}
+</div>
           </div>
         </div>
 
@@ -888,18 +905,23 @@ const FindingCard = ({
   severity,
   time,
 }: FindingCardProps) => {
-  const severityStyle =
-    severity === "Critical"
-      ? "text-red-400 bg-red-500/10 border-red-500/10"
-      : "text-orange-400 bg-orange-500/10 border-orange-500/10";
+const normalizedSeverity = severity.toUpperCase();
 
+const severityStyle =
+  normalizedSeverity === "CRITICAL"
+    ? "text-red-400 bg-red-500/10 border-red-500/10"
+    : normalizedSeverity === "HIGH"
+      ? "text-orange-400 bg-orange-500/10 border-orange-500/10"
+      : normalizedSeverity === "MEDIUM"
+        ? "text-amber-400 bg-amber-500/10 border-amber-500/10"
+        : "text-slate-400 bg-slate-500/10 border-slate-500/10";
   return (
     <div className="group rounded-xl border border-white/5 bg-black/10 p-4 transition hover:border-purple-400/20 hover:bg-purple-500/[0.03]">
 
       <div className="flex items-start gap-3">
         <div
           className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${
-            severity === "Critical"
+            normalizedSeverity === "CRITICAL"
               ? "bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.8)]"
               : "bg-orange-400 shadow-[0_0_10px_rgba(251,146,60,0.6)]"
           }`}
@@ -936,6 +958,23 @@ const FindingCard = ({
       </button>
     </div>
   );
+};
+
+const formatFindingTime = (date: string) => {
+  const diff = Date.now() - new Date(date).getTime();
+
+  const minutes = Math.floor(diff / 60000);
+
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes} min ago`;
+
+  const hours = Math.floor(minutes / 60);
+
+  if (hours < 24) return `${hours} hr ago`;
+
+  const days = Math.floor(hours / 24);
+
+  return `${days} day${days > 1 ? "s" : ""} ago`;
 };
 
 export default Dashboard;

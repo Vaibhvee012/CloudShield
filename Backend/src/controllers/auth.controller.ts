@@ -103,6 +103,8 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
+    console.log("JWT SECRET EXISTS:", !!process.env.JWT_SECRET);
+
     const token = jwt.sign(
       {
         userId: user.id,
