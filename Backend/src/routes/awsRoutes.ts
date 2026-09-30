@@ -8,6 +8,9 @@ import { syncAWSResources } from "../services/awsResourcePersistence";
 import { checkS3PublicAccess } from "../services/s3SecurityService";
 import { scanS3Security } from "../services/s3SecurityService";
 import { syncS3SecurityFindings } from "../services/securityFindingService";
+import { scanAWSSecurity } from "../services/securityScanner";
+import { syncAWSSecurityFindings } from "../services/awsFindingPersistence";
+import prisma from "../lib/prisma";
 
 const router = Router();
 
@@ -187,5 +190,108 @@ router.post("/security/s3/sync", async (req, res) => {
   }
 });
 
+
+router.get("/security/scan", async (_req, res) => {
+  try {
+    const findings = await scanAWSSecurity();
+
+    res.json({
+      success: true,
+      count: findings.length,
+      data: findings,
+    });
+  } catch (error) {
+    console.error("AWS security scan failed:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to scan AWS security",
+    });
+  }
+});
+
+
+router.post("/security/sync", async (_req, res) => {
+  try {
+    const findings = await syncAWSSecurityFindings();
+
+    res.json({
+      success: true,
+      message: "AWS security findings synced successfully",
+      count: findings.length,
+      data: findings,
+    });
+  } catch (error) {
+    console.error("AWS security finding sync failed:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to sync AWS security findings",
+    });
+  }
+});
+
+router.post("/full-sync", async (_req, res) => {
+  try {
+    const resources = await syncAWSResources();
+    const findings = await syncAWSSecurityFindings();
+
+    const syncTime = new Date();
+
+    await prisma.syncStatus.upsert({
+      where: {
+        id: "aws",
+      },
+      update: {
+        lastSyncedAt: syncTime,
+      },
+      create: {
+        id: "aws",
+        lastSyncedAt: syncTime,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: "AWS resources and security findings synced successfully",
+      data: {
+        resources,
+        findings,
+        resourceCount: resources.length,
+        findingCount: findings.length,
+        lastSyncedAt: syncTime,
+      },
+    });
+  } catch (error) {
+    console.error("AWS full sync failed:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to complete AWS full sync",
+    });
+  }
+});
+
+router.get("/sync-status", async (_req, res) => {
+  try {
+    const syncStatus = await prisma.syncStatus.findUnique({
+      where: {
+        id: "aws",
+      },
+    });
+
+    res.json({
+      success: true,
+      data: syncStatus,
+    });
+  } catch (error) {
+    console.error("AWS sync status error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch AWS sync status",
+    });
+  }
+});
 
 export default router;

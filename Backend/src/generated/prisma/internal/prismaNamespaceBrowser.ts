@@ -54,7 +54,8 @@ export const ModelName = {
   Resource: 'Resource',
   Finding: 'Finding',
   RemediationAction: 'RemediationAction',
-  User: 'User'
+  User: 'User',
+  SyncStatus: 'SyncStatus'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -133,6 +134,15 @@ export const UserScalarFieldEnum = {
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
 
 
+export const SyncStatusScalarFieldEnum = {
+  id: 'id',
+  lastSyncedAt: 'lastSyncedAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SyncStatusScalarFieldEnum = (typeof SyncStatusScalarFieldEnum)[keyof typeof SyncStatusScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -147,4 +157,12 @@ export const QueryMode = {
 } as const
 
 export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
+
+
+export const NullsOrder = {
+  first: 'first',
+  last: 'last'
+} as const
+
+export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
 

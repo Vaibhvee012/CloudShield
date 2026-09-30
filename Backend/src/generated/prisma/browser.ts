@@ -37,3 +37,8 @@ export type RemediationAction = Prisma.RemediationActionModel
  * 
  */
 export type User = Prisma.UserModel
+/**
+ * Model SyncStatus
+ * 
+ */
+export type SyncStatus = Prisma.SyncStatusModel

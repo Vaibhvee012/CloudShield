@@ -11,6 +11,10 @@ const getAuthHeaders = (): HeadersInit => {
     : {};
 };
 
+// ===============================
+// Security Posture
+// ===============================
+
 export const getSecurityPosture = async () => {
   const response = await fetch(`${API_BASE_URL}/security`, {
     headers: getAuthHeaders(),
@@ -22,6 +26,10 @@ export const getSecurityPosture = async () => {
 
   return response.json();
 };
+
+// ===============================
+// Resources
+// ===============================
 
 export const getResources = async () => {
   const response = await fetch(`${API_BASE_URL}/resources`, {
@@ -35,6 +43,10 @@ export const getResources = async () => {
   return response.json();
 };
 
+// ===============================
+// Findings
+// ===============================
+
 export const getFindings = async () => {
   const response = await fetch(`${API_BASE_URL}/findings`, {
     headers: getAuthHeaders(),
@@ -47,6 +59,10 @@ export const getFindings = async () => {
   return response.json();
 };
 
+// ===============================
+// Remediation
+// ===============================
+
 export const getRemediationActions = async () => {
   const response = await fetch(`${API_BASE_URL}/remediation`, {
     headers: getAuthHeaders(),
@@ -54,6 +70,39 @@ export const getRemediationActions = async () => {
 
   if (!response.ok) {
     throw new Error("Failed to fetch remediation actions");
+  }
+
+  return response.json();
+};
+
+// ===============================
+// AWS Full Sync
+// ===============================
+
+export const fullAWSSync = async () => {
+  const response = await fetch(`${API_BASE_URL}/aws/full-sync`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to sync AWS resources and security findings");
+  }
+
+  return response.json();
+};
+
+// ===============================
+// AWS Sync Status
+// ===============================
+
+export const getAWSSyncStatus = async () => {
+  const response = await fetch(`${API_BASE_URL}/aws/sync-status`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch AWS sync status");
   }
 
   return response.json();

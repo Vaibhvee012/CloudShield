@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -28,7 +28,13 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { getSecurityPosture, getFindings, getRemediationActions } from "../services/api";
+import {
+  getSecurityPosture,
+  getFindings,
+  getRemediationActions,
+  fullAWSSync,
+  getAWSSyncStatus,
+} from "../services/api";
 
 type SecurityData = {
   score: number;
@@ -77,32 +83,30 @@ const postureData = [
   { day: "30", score: 55 },
 ];
 
-
-
 const activity = [
   {
     icon: ShieldCheck,
     title: "Security scan completed",
-    description: "42 resources analyzed",
-    time: "2 min ago",
+    description: "Cloud environment analyzed",
+    time: "Live",
   },
   {
     icon: AlertTriangle,
-    title: "Critical finding detected",
-    description: "production-assets",
-    time: "4 min ago",
+    title: "Security findings detected",
+    description: "Review identified risks",
+    time: "Live",
   },
   {
     icon: CheckCircle2,
-    title: "Remediation completed",
-    description: "IAM policy updated",
-    time: "11 min ago",
+    title: "AWS resources synchronized",
+    description: "Cloud resources updated",
+    time: "Live",
   },
   {
     icon: Bot,
     title: "AI security analysis",
-    description: "3 recommendations generated",
-    time: "18 min ago",
+    description: "CloudShield AI available",
+    time: "Live",
   },
 ];
 
@@ -122,55 +126,109 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [remediationActions, setRemediationActions] = useState<any[]>([]);
+  const [syncing, setSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
 
-useEffect(() => {
-  const loadDashboardData = async () => {
+  /*
+   * Load dashboard data
+   */
+  const loadDashboardData = useCallback(async () => {
     try {
       const [
-  securityResponse,
-  findingsResponse,
-  remediationResponse,
-] = await Promise.all([
-  getSecurityPosture(),
-  getFindings(),
-  getRemediationActions(),
-]);
+        securityResponse,
+        findingsResponse,
+        remediationResponse,
+        syncStatusResponse,
+      ] = await Promise.all([
+        getSecurityPosture(),
+        getFindings(),
+        getRemediationActions(),
+        getAWSSyncStatus(),
+      ]);
 
       const securityData = securityResponse.data;
 
-      setSecurity({
-        score: securityData.securityScore,
-        totalFindings: securityData.totalFindings,
+      if (securityData) {
+        setSecurity({
+          score: securityData.securityScore ?? 0,
+          totalFindings: securityData.totalFindings ?? 0,
 
-        critical: securityData.severity.critical,
-        high: securityData.severity.high,
-        medium: securityData.severity.medium,
-        low: securityData.severity.low,
+          critical: securityData.severity?.critical ?? 0,
+          high: securityData.severity?.high ?? 0,
+          medium: securityData.severity?.medium ?? 0,
+          low: securityData.severity?.low ?? 0,
 
-        resourcesTotal: securityData.resources.total,
-        healthyResources: securityData.resources.healthy,
-        healthPercentage: securityData.resources.healthPercentage,
-      });
+          resourcesTotal: securityData.resources?.total ?? 0,
+          healthyResources: securityData.resources?.healthy ?? 0,
+          healthPercentage:
+            securityData.resources?.healthPercentage ?? 0,
+        });
+      }
 
-      setFindings(findingsResponse.data);
-      setRemediationActions(remediationResponse.data);
+      setFindings(findingsResponse.data ?? []);
+      setRemediationActions(remediationResponse.data ?? []);
+
+      setLastSyncedAt(
+        syncStatusResponse.data?.lastSyncedAt ?? null
+      );
     } catch (error) {
       console.error("Failed to load dashboard data:", error);
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  /*
+   * Initial dashboard load
+   */
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
+
+  /*
+   * Run complete AWS synchronization
+   */
+  const handleAWSSync = async () => {
+    try {
+      setSyncing(true);
+
+      const result = await fullAWSSync();
+
+      console.log("AWS full sync completed:", result);
+
+      /*
+       * Update sync time immediately
+       */
+      if (result?.data?.lastSyncedAt) {
+        setLastSyncedAt(result.data.lastSyncedAt);
+      }
+
+      /*
+       * Refresh dashboard data
+       */
+      await loadDashboardData();
+    } catch (error) {
+      console.error("AWS full sync failed:", error);
+    } finally {
+      setSyncing(false);
+    }
   };
 
-  loadDashboardData();
-}, []);
   const score = security.score;
+
+  const postureMessage =
+    score >= 80
+      ? "Your environment is well protected"
+      : score >= 60
+        ? "Your environment needs some attention"
+        : "Your environment needs attention";
 
   return (
     <div className="min-h-screen bg-[#08070d] text-white">
-
       {/* Background */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-purple-600/10 blur-[150px]" />
+
         <div className="absolute right-[-150px] top-[30%] h-[500px] w-[500px] rounded-full bg-violet-600/10 blur-[150px]" />
 
         <div
@@ -184,13 +242,12 @@ useEffect(() => {
       </div>
 
       <div className="relative z-10 space-y-6 p-5 lg:p-8">
-
         {/* Header */}
         <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
-
           <div>
             <div className="mb-2 flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
+
               <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-300">
                 Security systems operational
               </span>
@@ -206,44 +263,57 @@ useEffect(() => {
           </div>
 
           <div className="flex items-center gap-3">
-
+            {/* Last sync */}
             <div className="hidden rounded-xl border border-white/10 bg-white/[0.035] px-4 py-2.5 sm:block">
               <p className="text-[9px] uppercase tracking-wider text-slate-600">
                 Last security scan
               </p>
+
               <p className="mt-0.5 text-xs text-slate-300">
-                Today, 10:42 PM
+                {lastSyncedAt
+                  ? formatSyncTime(lastSyncedAt)
+                  : "Not synced yet"}
               </p>
             </div>
 
-            <button className="group flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-violet-600 px-4 py-3 text-sm font-medium shadow-lg shadow-purple-900/20 transition hover:brightness-110">
-              <RefreshCw className="h-4 w-4 transition group-hover:rotate-180" />
-              Run scan
+            {/* Run scan */}
+            <button
+              onClick={handleAWSSync}
+              disabled={syncing}
+              className="group flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-violet-600 px-4 py-3 text-sm font-medium shadow-lg shadow-purple-900/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${
+                  syncing
+                    ? "animate-spin"
+                    : "transition group-hover:rotate-180"
+                }`}
+              />
+
+              {syncing ? "Scanning..." : "Run scan"}
             </button>
           </div>
         </div>
 
         {/* Main Security Posture */}
         <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
-
-          {/* Security score */}
+          {/* Security Score */}
           <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.045] p-7 shadow-2xl shadow-black/20">
-
             <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-purple-600/10 blur-[90px]" />
 
             <div className="relative flex h-full flex-col justify-between">
-
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2">
                     <Shield className="h-4 w-4 text-purple-300" />
+
                     <span className="text-xs font-semibold uppercase tracking-[0.2em] text-purple-300">
                       Overall security posture
                     </span>
                   </div>
 
                   <h2 className="mt-3 text-2xl font-semibold">
-                    Your environment needs attention
+                    {postureMessage}
                   </h2>
 
                   <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
@@ -255,6 +325,7 @@ useEffect(() => {
                 <div className="hidden rounded-xl border border-purple-400/20 bg-purple-500/10 px-3 py-2 sm:block">
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-3.5 w-3.5 text-purple-300" />
+
                     <span className="text-xs text-purple-200">
                       +8% this month
                     </span>
@@ -263,10 +334,8 @@ useEffect(() => {
               </div>
 
               <div className="mt-8 grid items-center gap-8 md:grid-cols-[230px_1fr]">
-
                 {/* Score */}
                 <div className="relative mx-auto flex h-[210px] w-[210px] items-center justify-center">
-
                   <div
                     className="absolute inset-0 rounded-full"
                     style={{
@@ -293,21 +362,26 @@ useEffect(() => {
 
                     <div className="mx-auto mt-3 flex w-fit items-center gap-1.5 rounded-full bg-amber-400/10 px-2.5 py-1">
                       <div className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+
                       <span className="text-[10px] font-medium text-amber-300">
-                        Needs attention
+                        {score >= 80
+                          ? "Healthy"
+                          : score >= 60
+                            ? "Monitor"
+                            : "Needs attention"}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Score breakdown */}
+                {/* Score Breakdown */}
                 <div className="space-y-5">
-
                   <div>
                     <div className="mb-2 flex justify-between">
                       <span className="text-xs text-slate-400">
                         Environment health
                       </span>
+
                       <span className="text-xs font-semibold text-white">
                         {security.healthPercentage}%
                       </span>
@@ -324,7 +398,6 @@ useEffect(() => {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-
                     <PostureStat
                       label="Critical"
                       value={security.critical}
@@ -360,7 +433,6 @@ useEffect(() => {
 
           {/* Infrastructure */}
           <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.045] p-6">
-
             <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-purple-600/10 blur-[70px]" />
 
             <div className="relative">
@@ -369,6 +441,7 @@ useEffect(() => {
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                     Cloud infrastructure
                   </p>
+
                   <h3 className="mt-2 text-lg font-semibold">
                     Protected environment
                   </h3>
@@ -377,17 +450,18 @@ useEffect(() => {
                 <Cloud className="h-5 w-5 text-purple-300" />
               </div>
 
-              {/* Cloud map */}
+              {/* Cloud Map */}
               <div className="relative mt-6 h-[250px] overflow-hidden rounded-2xl border border-white/5 bg-[#090811]">
-
                 <div className="absolute inset-0 opacity-20">
                   <div className="absolute left-1/2 top-1/2 h-px w-full -translate-x-1/2 bg-purple-500" />
+
                   <div className="absolute left-1/2 top-1/2 h-full w-px -translate-y-1/2 bg-purple-500" />
                 </div>
 
-                {/* Connection lines */}
                 <div className="absolute left-[27%] top-[48%] h-px w-[25%] rotate-[-20deg] bg-gradient-to-r from-purple-500/20 to-purple-400/60" />
+
                 <div className="absolute right-[27%] top-[48%] h-px w-[25%] rotate-[20deg] bg-gradient-to-l from-purple-500/20 to-purple-400/60" />
+
                 <div className="absolute left-1/2 top-[35%] h-[30%] w-px bg-gradient-to-b from-purple-400/50 to-transparent" />
 
                 {/* Center */}
@@ -395,6 +469,7 @@ useEffect(() => {
                   <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-purple-400/30 bg-purple-500/10 shadow-[0_0_35px_rgba(139,92,246,0.2)]">
                     <ShieldCheck className="h-8 w-8 text-purple-300" />
                   </div>
+
                   <span className="mt-2 text-[9px] uppercase tracking-widest text-purple-300">
                     CloudShield
                   </span>
@@ -445,7 +520,6 @@ useEffect(() => {
 
         {/* Metrics */}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-
           <MetricCard
             icon={<ShieldAlert />}
             label="Security findings"
@@ -489,14 +563,13 @@ useEffect(() => {
 
         {/* Analytics */}
         <div className="grid gap-6 xl:grid-cols-[1.5fr_0.8fr]">
-
           {/* Chart */}
           <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-6">
-
             <div className="flex items-start justify-between">
               <div>
                 <div className="flex items-center gap-2">
                   <Activity className="h-4 w-4 text-purple-300" />
+
                   <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                     Security telemetry
                   </span>
@@ -539,6 +612,7 @@ useEffect(() => {
                         stopColor="#8B5CF6"
                         stopOpacity={0.35}
                       />
+
                       <stop
                         offset="100%"
                         stopColor="#8B5CF6"
@@ -600,11 +674,11 @@ useEffect(() => {
 
           {/* Threat Center */}
           <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-6">
-
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
                   <ShieldAlert className="h-4 w-4 text-red-400" />
+
                   <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                     Threat center
                   </span>
@@ -619,26 +693,38 @@ useEffect(() => {
                 View all
               </button>
             </div>
-<div className="mt-5 space-y-3">
-  {findings.slice(0, 3).map((finding) => (
-    <FindingCard
-      key={finding.id}
-      title={finding.title}
-      resource={finding.resource.name}
-      severity={finding.severity}
-      time={formatFindingTime(finding.createdAt)}
-    />
-  ))}
-</div>
+
+            <div className="mt-5 space-y-3">
+              {findings.length === 0 ? (
+                <div className="rounded-xl border border-white/5 bg-black/10 p-5 text-center">
+                  <ShieldCheck className="mx-auto h-6 w-6 text-emerald-400" />
+
+                  <p className="mt-2 text-xs text-slate-400">
+                    No security findings detected
+                  </p>
+                </div>
+              ) : (
+                findings.slice(0, 3).map((finding) => (
+                  <FindingCard
+                    key={finding.id}
+                    title={finding.title}
+                    resource={
+                      finding.resource?.name ||
+                      finding.resourceId
+                    }
+                    severity={finding.severity}
+                    time={formatFindingTime(finding.createdAt)}
+                  />
+                ))
+              )}
+            </div>
           </div>
         </div>
 
         {/* Bottom */}
         <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
-
           {/* AI */}
           <div className="relative overflow-hidden rounded-3xl border border-purple-400/20 bg-gradient-to-br from-purple-600/15 via-violet-600/[0.06] to-transparent p-6">
-
             <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-purple-500/20 blur-[80px]" />
 
             <div className="relative">
@@ -651,6 +737,7 @@ useEffect(() => {
                   <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-purple-300">
                     CloudShield AI
                   </p>
+
                   <h3 className="mt-1 text-lg font-semibold">
                     Security intelligence
                   </h3>
@@ -660,9 +747,9 @@ useEffect(() => {
               <p className="mt-5 text-sm leading-6 text-slate-400">
                 CloudShield AI identified{" "}
                 <span className="font-medium text-white">
-                  3 security improvements
+                  {Math.min(3, findings.length)} security improvements
                 </span>{" "}
-                that could increase your posture score.
+                that could improve your posture score.
               </p>
 
               <div className="mt-5 flex items-center gap-3">
@@ -680,11 +767,11 @@ useEffect(() => {
 
           {/* Activity */}
           <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-6">
-
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
                   <Activity className="h-4 w-4 text-purple-300" />
+
                   <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                     Live telemetry
                   </span>
@@ -697,6 +784,7 @@ useEffect(() => {
 
               <div className="flex items-center gap-2 text-[10px] text-emerald-400">
                 <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+
                 LIVE
               </div>
             </div>
@@ -784,10 +872,14 @@ const PostureStat = ({
           {icon}
         </div>
 
-        <span className="text-lg font-semibold">{value}</span>
+        <span className="text-lg font-semibold">
+          {value}
+        </span>
       </div>
 
-      <p className="mt-2 text-[10px] text-slate-500">{label}</p>
+      <p className="mt-2 text-[10px] text-slate-500">
+        {label}
+      </p>
     </div>
   );
 };
@@ -818,7 +910,6 @@ const MetricCard = ({
 
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-5 transition duration-300 hover:-translate-y-0.5 hover:border-purple-400/20 hover:bg-white/[0.055]">
-
       <div className="absolute -right-10 -top-10 h-24 w-24 rounded-full bg-purple-600/5 blur-2xl transition group-hover:bg-purple-600/10" />
 
       <div className="relative">
@@ -870,7 +961,9 @@ const InfrastructureNode = ({
   return (
     <div className={`absolute ${className}`}>
       <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 backdrop-blur-md">
-        <div className="text-slate-400">{icon}</div>
+        <div className="text-slate-400">
+          {icon}
+        </div>
 
         <div>
           <p className="text-[9px] font-medium text-slate-300">
@@ -909,26 +1002,31 @@ const FindingCard = ({
   severity,
   time,
 }: FindingCardProps) => {
-const normalizedSeverity = severity.toUpperCase();
+  const normalizedSeverity = severity.toUpperCase();
 
-const severityStyle =
-  normalizedSeverity === "CRITICAL"
-    ? "text-red-400 bg-red-500/10 border-red-500/10"
-    : normalizedSeverity === "HIGH"
-      ? "text-orange-400 bg-orange-500/10 border-orange-500/10"
-      : normalizedSeverity === "MEDIUM"
-        ? "text-amber-400 bg-amber-500/10 border-amber-500/10"
-        : "text-slate-400 bg-slate-500/10 border-slate-500/10";
+  const severityStyle =
+    normalizedSeverity === "CRITICAL"
+      ? "text-red-400 bg-red-500/10 border-red-500/10"
+      : normalizedSeverity === "HIGH"
+        ? "text-orange-400 bg-orange-500/10 border-orange-500/10"
+        : normalizedSeverity === "MEDIUM"
+          ? "text-amber-400 bg-amber-500/10 border-amber-500/10"
+          : "text-slate-400 bg-slate-500/10 border-slate-500/10";
+
+  const dotStyle =
+    normalizedSeverity === "CRITICAL"
+      ? "bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.8)]"
+      : normalizedSeverity === "HIGH"
+        ? "bg-orange-400 shadow-[0_0_10px_rgba(251,146,60,0.6)]"
+        : normalizedSeverity === "MEDIUM"
+          ? "bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.6)]"
+          : "bg-slate-400";
+
   return (
     <div className="group rounded-xl border border-white/5 bg-black/10 p-4 transition hover:border-purple-400/20 hover:bg-purple-500/[0.03]">
-
       <div className="flex items-start gap-3">
         <div
-          className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${
-            normalizedSeverity === "CRITICAL"
-              ? "bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.8)]"
-              : "bg-orange-400 shadow-[0_0_10px_rgba(251,146,60,0.6)]"
-          }`}
+          className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${dotStyle}`}
         />
 
         <div className="min-w-0 flex-1">
@@ -945,7 +1043,7 @@ const severityStyle =
           </div>
 
           <div className="mt-2 flex items-center justify-between">
-            <span className="text-[10px] text-slate-600">
+            <span className="truncate text-[10px] text-slate-600">
               {resource}
             </span>
 
@@ -964,21 +1062,51 @@ const severityStyle =
   );
 };
 
-const formatFindingTime = (date: string) => {
-  const diff = Date.now() - new Date(date).getTime();
+/* ---------------- HELPERS ---------------- */
 
+const formatFindingTime = (date: string) => {
+  const timestamp = new Date(date).getTime();
+
+  if (Number.isNaN(timestamp)) {
+    return "Unknown";
+  }
+
+  const diff = Date.now() - timestamp;
   const minutes = Math.floor(diff / 60000);
 
-  if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes < 1) {
+    return "Just now";
+  }
+
+  if (minutes < 60) {
+    return `${minutes} min ago`;
+  }
 
   const hours = Math.floor(minutes / 60);
 
-  if (hours < 24) return `${hours} hr ago`;
+  if (hours < 24) {
+    return `${hours} hr ago`;
+  }
 
   const days = Math.floor(hours / 24);
 
   return `${days} day${days > 1 ? "s" : ""} ago`;
+};
+
+const formatSyncTime = (date: string) => {
+  const timestamp = new Date(date);
+
+  if (Number.isNaN(timestamp.getTime())) {
+    return "Unknown";
+  }
+
+  return timestamp.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
 
 export default Dashboard;

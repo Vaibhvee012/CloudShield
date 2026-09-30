@@ -16,6 +16,10 @@ export const scanAWSSecurity = async () => {
   // -------------------------
 
   for (const instance of ec2Instances) {
+    if (!instance.id) {
+      continue;
+    }
+
     if (instance.publicIp) {
       findings.push({
         id: `ec2-public-ip-${instance.id}`,
@@ -36,6 +40,10 @@ export const scanAWSSecurity = async () => {
   // -------------------------
 
   for (const bucket of s3Buckets) {
+    if (!bucket.name) {
+      continue;
+    }
+
     if (!bucket.publicAccessBlocked) {
       findings.push({
         id: `s3-public-access-${bucket.name}`,
@@ -56,6 +64,10 @@ export const scanAWSSecurity = async () => {
   // -------------------------
 
   for (const db of rdsInstances) {
+    if (!db.id) {
+      continue;
+    }
+
     if (db.publiclyAccessible) {
       findings.push({
         id: `rds-public-access-${db.id}`,

@@ -10,6 +10,7 @@ import remediationRoutes from "./routes/remediation.routes";
 import authRoutes from "./routes/auth.routes";
 import "dotenv/config";
 import awsRoutes from "./routes/awsRoutes";
+import { startScheduler } from "./jobs/scheduler";
 
 dotenv.config();
 
@@ -33,5 +34,7 @@ app.use("/api/aws", awsRoutes);
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`CloudShield API running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
+
+  startScheduler();
 });

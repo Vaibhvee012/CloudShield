@@ -400,7 +400,8 @@ export const ModelName = {
   Resource: 'Resource',
   Finding: 'Finding',
   RemediationAction: 'RemediationAction',
-  User: 'User'
+  User: 'User',
+  SyncStatus: 'SyncStatus'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -416,7 +417,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "resource" | "finding" | "remediationAction" | "user"
+    modelProps: "resource" | "finding" | "remediationAction" | "user" | "syncStatus"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -716,6 +717,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    SyncStatus: {
+      payload: Prisma.$SyncStatusPayload<ExtArgs>
+      fields: Prisma.SyncStatusFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.SyncStatusFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SyncStatusPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.SyncStatusFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SyncStatusPayload>
+        }
+        findFirst: {
+          args: Prisma.SyncStatusFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SyncStatusPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.SyncStatusFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SyncStatusPayload>
+        }
+        findMany: {
+          args: Prisma.SyncStatusFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SyncStatusPayload>[]
+        }
+        create: {
+          args: Prisma.SyncStatusCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SyncStatusPayload>
+        }
+        createMany: {
+          args: Prisma.SyncStatusCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SyncStatusCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SyncStatusPayload>[]
+        }
+        delete: {
+          args: Prisma.SyncStatusDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SyncStatusPayload>
+        }
+        update: {
+          args: Prisma.SyncStatusUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SyncStatusPayload>
+        }
+        deleteMany: {
+          args: Prisma.SyncStatusDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.SyncStatusUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.SyncStatusUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SyncStatusPayload>[]
+        }
+        upsert: {
+          args: Prisma.SyncStatusUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SyncStatusPayload>
+        }
+        aggregate: {
+          args: Prisma.SyncStatusAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSyncStatus>
+        }
+        groupBy: {
+          args: Prisma.SyncStatusGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SyncStatusGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.SyncStatusCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SyncStatusCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -815,6 +890,15 @@ export const UserScalarFieldEnum = {
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
 
 
+export const SyncStatusScalarFieldEnum = {
+  id: 'id',
+  lastSyncedAt: 'lastSyncedAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SyncStatusScalarFieldEnum = (typeof SyncStatusScalarFieldEnum)[keyof typeof SyncStatusScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -829,6 +913,14 @@ export const QueryMode = {
 } as const
 
 export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
+
+
+export const NullsOrder = {
+  first: 'first',
+  last: 'last'
+} as const
+
+export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
 
 
 
@@ -1033,6 +1125,7 @@ export type GlobalOmitConfig = {
   finding?: Prisma.FindingOmit
   remediationAction?: Prisma.RemediationActionOmit
   user?: Prisma.UserOmit
+  syncStatus?: Prisma.SyncStatusOmit
 }
 
 /* Types for Logging */
