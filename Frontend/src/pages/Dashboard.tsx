@@ -476,9 +476,13 @@ useEffect(() => {
           <MetricCard
             icon={<Zap />}
             label="Auto remediation"
-            value="04"
-            detail="Actions available"
-            trend="+12%"
+            value={remediationActions.length.toString().padStart(2, "0")}
+            detail={
+              remediationActions.length === 1
+                ? "Action available"
+                : "Actions available"
+            }
+            trend="Available"
             tone="green"
           />
         </div>

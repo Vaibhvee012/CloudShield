@@ -31,7 +31,9 @@ function SecurityScore() {
       try {
         const response = await getSecurityPosture();
 
-        setData(response.data ?? response);
+        const securityData = response.data ?? response;
+
+        setData(securityData);
       } catch (error) {
         setError("Failed to load security score");
         console.error(error);
@@ -80,7 +82,15 @@ function SecurityScore() {
     );
   }
 
-  const score = Math.max(0, Math.min(100, data.score));
+  const score = Math.min(
+    100,
+    Math.max(0, Number(data.score) || 0)
+  );
+
+  const healthPercentage = Math.min(
+    100,
+    Math.max(0, Number(data.healthPercentage) || 0)
+  );
 
   const scoreStatus =
     score >= 80
@@ -101,6 +111,7 @@ function SecurityScore() {
           : "Your environment requires immediate security attention.";
 
   const circumference = 2 * Math.PI * 92;
+
   const dashOffset =
     circumference - (score / 100) * circumference;
 
@@ -236,7 +247,7 @@ function SecurityScore() {
             <div className="flex items-end justify-between">
               <div>
                 <span className="text-4xl font-bold text-white">
-                  {data.healthPercentage}%
+                  {healthPercentage}%
                 </span>
 
                 <p className="mt-1 text-xs text-gray-500">
@@ -253,10 +264,7 @@ function SecurityScore() {
               <div
                 className="h-full rounded-full bg-[#22C55E] transition-all duration-700"
                 style={{
-                  width: `${Math.min(
-                    100,
-                    Math.max(0, data.healthPercentage)
-                  )}%`,
+                  width: `${healthPercentage}%`,
                 }}
               />
             </div>

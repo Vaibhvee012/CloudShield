@@ -9,14 +9,38 @@ import {
 
 import { getRemediationActions } from "../services/api";
 
+interface RemediationResource {
+  id: string;
+  name: string;
+  type: string;
+  region: string;
+  status: string;
+  environment: string;
+  riskLevel: string;
+  source: string;
+}
+
+interface RemediationFinding {
+  id: string;
+  title: string;
+  severity: string;
+  resourceId: string;
+  resourceType: string;
+  region: string;
+  status: string;
+  category: string;
+  description: string;
+  resource: RemediationResource;
+}
+
 interface RemediationAction {
   id: string;
   findingId: string;
   title: string;
-  resource: string;
   action: string;
   status: string;
   riskReduction: string;
+  finding?: RemediationFinding;
 }
 
 function Remediation() {
@@ -59,60 +83,49 @@ function Remediation() {
     return (
       <div className="rounded-2xl border border-[#EF4444]/20 bg-[#0B0914] p-6">
         <div className="flex items-center gap-3">
-          <AlertTriangle
-            size={20}
-            className="text-[#EF4444]"
-          />
+          <AlertTriangle size={20} className="text-[#EF4444]" />
 
           <div>
             <h2 className="font-semibold text-white">
               Unable to load remediation actions
             </h2>
 
-            <p className="mt-1 text-sm text-gray-500">
-              {error}
-            </p>
+            <p className="mt-1 text-sm text-gray-500">{error}</p>
           </div>
         </div>
       </div>
     );
   }
 
-  const completedCount = actions.filter(
-    (action) => {
-      const status = action.status?.toLowerCase();
+  const completedCount = actions.filter((action) => {
+    const status = action.status?.toLowerCase();
 
-      return (
-        status === "completed" ||
-        status === "resolved" ||
-        status === "success"
-      );
-    }
-  ).length;
+    return (
+      status === "completed" ||
+      status === "resolved" ||
+      status === "success"
+    );
+  }).length;
 
-  const pendingCount = actions.filter(
-    (action) => {
-      const status = action.status?.toLowerCase();
+  const pendingCount = actions.filter((action) => {
+    const status = action.status?.toLowerCase();
 
-      return (
-        status === "pending" ||
-        status === "open" ||
-        status === "queued"
-      );
-    }
-  ).length;
+    return (
+      status === "pending" ||
+      status === "open" ||
+      status === "queued"
+    );
+  }).length;
 
-  const inProgressCount = actions.filter(
-    (action) => {
-      const status = action.status?.toLowerCase();
+  const inProgressCount = actions.filter((action) => {
+    const status = action.status?.toLowerCase();
 
-      return (
-        status === "in progress" ||
-        status === "in-progress" ||
-        status === "running"
-      );
-    }
-  ).length;
+    return (
+      status === "in progress" ||
+      status === "in-progress" ||
+      status === "running"
+    );
+  }).length;
 
   return (
     <div className="space-y-6">
@@ -121,10 +134,7 @@ function Remediation() {
         <div>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#8B5CF6]/10">
-              <Wrench
-                size={21}
-                className="text-[#A78BFA]"
-              />
+              <Wrench size={21} className="text-[#A78BFA]" />
             </div>
 
             <div>
@@ -140,9 +150,7 @@ function Remediation() {
         </div>
 
         <div className="rounded-xl border border-white/10 bg-[#0B0914] px-4 py-3">
-          <p className="text-xs text-gray-500">
-            Total Actions
-          </p>
+          <p className="text-xs text-gray-500">Total Actions</p>
 
           <p className="mt-1 text-xl font-bold text-white">
             {actions.length}
@@ -195,17 +203,15 @@ function Remediation() {
 
         {actions.length === 0 ? (
           <div className="px-6 py-14 text-center">
-            <Shield
-              size={34}
-              className="mx-auto text-gray-600"
-            />
+            <Shield size={34} className="mx-auto text-gray-600" />
 
             <p className="mt-3 text-sm font-medium text-gray-300">
               No remediation actions
             </p>
 
             <p className="mt-1 text-xs text-gray-600">
-              Remediation actions will appear here when security issues require corrective action.
+              Remediation actions will appear here when security issues require
+              corrective action.
             </p>
           </div>
         ) : (
@@ -283,10 +289,7 @@ function RemediationRow({
         {/* Action information */}
         <div className="flex min-w-0 gap-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#8B5CF6]/10">
-            <Wrench
-              size={19}
-              className="text-[#A78BFA]"
-            />
+            <Wrench size={19} className="text-[#A78BFA]" />
           </div>
 
           <div className="min-w-0">
@@ -310,14 +313,16 @@ function RemediationRow({
               <span>
                 Finding:{" "}
                 <span className="text-gray-400">
-                  {action.findingId}
+                  {action.finding?.title || action.findingId}
                 </span>
               </span>
 
               <span>
                 Resource:{" "}
                 <span className="text-gray-400">
-                  {action.resource}
+                  {action.finding?.resource?.name ||
+                    action.finding?.resourceId ||
+                    "Unknown"}
                 </span>
               </span>
             </div>

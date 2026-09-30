@@ -8,16 +8,30 @@ import {
 
 import { getFindings } from "../services/api";
 
+interface FindingResource {
+  id: string;
+  name: string;
+  type: string;
+  region: string;
+  status: string;
+  environment: string;
+  riskLevel: string;
+  source: string;
+}
+
 interface Finding {
   id: string;
   title: string;
   severity: string;
-  resource: string;
+  resourceId: string;
   resourceType: string;
   region: string;
   status: string;
   category: string;
   description: string;
+  resource: FindingResource;
+  createdAt: string;
+  updatedAt: string;
 }
 
 function Findings() {
@@ -29,6 +43,7 @@ function Findings() {
     const fetchFindings = async () => {
       try {
         const response = await getFindings();
+
         setFindings(response.data);
       } catch (error) {
         setError("Failed to load findings");
@@ -293,7 +308,7 @@ function FindingRow({
               <span>
                 Resource:{" "}
                 <span className="text-gray-400">
-                  {finding.resource}
+                  {finding.resource?.name || finding.resourceId}
                 </span>
               </span>
 

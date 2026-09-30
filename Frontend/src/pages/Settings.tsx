@@ -7,7 +7,9 @@ import {
   Settings as SettingsIcon,
   Shield,
   User,
+  Check,
 } from "lucide-react";
+import { useState } from "react";
 
 function Settings() {
   const storedUser = localStorage.getItem("cloudshield_user");
@@ -25,16 +27,16 @@ function Settings() {
   const userName = user?.name || "CloudShield User";
   const userEmail = user?.email || "Not available";
 
+  const [securityAlerts, setSecurityAlerts] = useState(true);
+  const [remediationUpdates, setRemediationUpdates] = useState(true);
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#8B5CF6]/10">
-            <SettingsIcon
-              size={21}
-              className="text-[#A78BFA]"
-            />
+            <SettingsIcon size={21} className="text-[#A78BFA]" />
           </div>
 
           <div>
@@ -53,15 +55,10 @@ function Settings() {
       <section className="rounded-2xl border border-white/10 bg-[#0B0914]">
         <div className="border-b border-white/10 px-6 py-5">
           <div className="flex items-center gap-3">
-            <User
-              size={18}
-              className="text-[#A78BFA]"
-            />
+            <User size={18} className="text-[#A78BFA]" />
 
             <div>
-              <h2 className="text-sm font-semibold text-white">
-                Account
-              </h2>
+              <h2 className="text-sm font-semibold text-white">Account</h2>
 
               <p className="mt-1 text-xs text-gray-600">
                 Your CloudShield account information.
@@ -71,25 +68,16 @@ function Settings() {
         </div>
 
         <div className="grid gap-5 p-6 md:grid-cols-2">
-          <SettingField
-            label="Name"
-            value={userName}
-          />
+          <SettingField label="Name" value={userName} />
 
-          <SettingField
-            label="Email"
-            value={userEmail}
-          />
+          <SettingField label="Email" value={userEmail} />
 
           <SettingField
             label="Role"
             value={user?.role || "Administrator"}
           />
 
-          <SettingField
-            label="Account Status"
-            value="Active"
-          />
+          <SettingField label="Account Status" value="Active" />
         </div>
       </section>
 
@@ -97,15 +85,10 @@ function Settings() {
       <section className="rounded-2xl border border-white/10 bg-[#0B0914]">
         <div className="border-b border-white/10 px-6 py-5">
           <div className="flex items-center gap-3">
-            <Shield
-              size={18}
-              className="text-[#A78BFA]"
-            />
+            <Shield size={18} className="text-[#A78BFA]" />
 
             <div>
-              <h2 className="text-sm font-semibold text-white">
-                Security
-              </h2>
+              <h2 className="text-sm font-semibold text-white">Security</h2>
 
               <p className="mt-1 text-xs text-gray-600">
                 Manage account security settings.
@@ -135,10 +118,7 @@ function Settings() {
       <section className="rounded-2xl border border-white/10 bg-[#0B0914]">
         <div className="border-b border-white/10 px-6 py-5">
           <div className="flex items-center gap-3">
-            <Bell
-              size={18}
-              className="text-[#A78BFA]"
-            />
+            <Bell size={18} className="text-[#A78BFA]" />
 
             <div>
               <h2 className="text-sm font-semibold text-white">
@@ -156,13 +136,15 @@ function Settings() {
           <ToggleRow
             title="Security Alerts"
             description="Receive alerts for critical security findings."
-            enabled
+            enabled={securityAlerts}
+            onToggle={() => setSecurityAlerts((current) => !current)}
           />
 
           <ToggleRow
             title="Remediation Updates"
             description="Receive updates when remediation actions change."
-            enabled
+            enabled={remediationUpdates}
+            onToggle={() => setRemediationUpdates((current) => !current)}
           />
         </div>
       </section>
@@ -171,10 +153,7 @@ function Settings() {
       <section className="rounded-2xl border border-white/10 bg-[#0B0914]">
         <div className="border-b border-white/10 px-6 py-5">
           <div className="flex items-center gap-3">
-            <Palette
-              size={18}
-              className="text-[#A78BFA]"
-            />
+            <Palette size={18} className="text-[#A78BFA]" />
 
             <div>
               <h2 className="text-sm font-semibold text-white">
@@ -190,9 +169,7 @@ function Settings() {
 
         <div className="flex items-center justify-between p-6">
           <div>
-            <p className="text-sm font-medium text-white">
-              Theme
-            </p>
+            <p className="text-sm font-medium text-white">Theme</p>
 
             <p className="mt-1 text-xs text-gray-600">
               CloudShield is currently using the Midnight theme.
@@ -230,9 +207,7 @@ function SettingField({
 }) {
   return (
     <div>
-      <label className="text-xs font-medium text-gray-500">
-        {label}
-      </label>
+      <label className="text-xs font-medium text-gray-500">{label}</label>
 
       <div className="mt-2 rounded-lg border border-white/10 bg-white/[0.025] px-4 py-3 text-sm text-gray-300">
         {value}
@@ -260,13 +235,9 @@ function SettingRow({
         </div>
 
         <div>
-          <p className="text-sm font-medium text-white">
-            {title}
-          </p>
+          <p className="text-sm font-medium text-white">{title}</p>
 
-          <p className="mt-1 text-xs text-gray-600">
-            {description}
-          </p>
+          <p className="mt-1 text-xs text-gray-600">{description}</p>
         </div>
       </div>
 
@@ -285,34 +256,39 @@ function ToggleRow({
   title,
   description,
   enabled,
+  onToggle,
 }: {
   title: string;
   description: string;
   enabled: boolean;
+  onToggle: () => void;
 }) {
   return (
     <div className="flex items-center justify-between gap-4 px-6 py-5">
       <div>
-        <p className="text-sm font-medium text-white">
-          {title}
-        </p>
+        <p className="text-sm font-medium text-white">{title}</p>
 
-        <p className="mt-1 text-xs text-gray-600">
-          {description}
-        </p>
+        <p className="mt-1 text-xs text-gray-600">{description}</p>
       </div>
 
-      <div
-        className={`relative h-6 w-11 rounded-full ${
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label={`${title} ${enabled ? "enabled" : "disabled"}`}
+        className={`relative h-6 w-11 rounded-full transition ${
           enabled ? "bg-[#8B5CF6]" : "bg-white/10"
         }`}
       >
         <div
-          className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${
+          className={`absolute top-1 flex h-4 w-4 items-center justify-center rounded-full bg-white transition ${
             enabled ? "left-6" : "left-1"
           }`}
-        />
-      </div>
+        >
+          {enabled && (
+            <Check size={10} className="text-[#8B5CF6]" />
+          )}
+        </div>
+      </button>
     </div>
   );
 }

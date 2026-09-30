@@ -19,6 +19,7 @@ interface Resource {
   status: string;
   environment: string;
   riskLevel: string;
+  source: string;
 }
 
 function Resources() {
@@ -295,6 +296,10 @@ function ResourceRow({
 
         <span className="rounded-lg bg-white/5 px-2.5 py-1 text-[10px] font-medium uppercase text-gray-400">
           {resource.status}
+        </span>
+
+        <span className="rounded-lg bg-white/5 px-2.5 py-1 text-[10px] font-medium uppercase text-gray-400">
+          {resource.source}
         </span>
 
         <span

@@ -14,10 +14,7 @@ function AuditLogs() {
       <div>
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#8B5CF6]/10">
-            <FileClock
-              size={21}
-              className="text-[#A78BFA]"
-            />
+            <FileClock size={21} className="text-[#A78BFA]" />
           </div>
 
           <div>
@@ -37,29 +34,29 @@ function AuditLogs() {
         <SummaryCard
           icon={<Activity size={18} />}
           label="Total Events"
-          value="—"
+          value="0"
         />
 
         <SummaryCard
           icon={<ShieldAlert size={18} />}
           label="Security Events"
-          value="—"
+          value="0"
         />
 
         <SummaryCard
           icon={<User size={18} />}
           label="Administrative"
-          value="—"
+          value="0"
         />
 
         <SummaryCard
           icon={<CheckCircle2 size={18} />}
           label="Successful"
-          value="—"
+          value="0"
         />
       </div>
 
-      {/* Filters */}
+      {/* Activity History */}
       <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#0B0914] p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-sm font-semibold text-white">
@@ -74,7 +71,7 @@ function AuditLogs() {
         <div className="flex gap-2">
           <button
             type="button"
-            className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-gray-400 transition hover:border-[#8B5CF6]/30 hover:text-white"
+            className="rounded-lg border border-[#8B5CF6]/30 bg-[#8B5CF6]/10 px-3 py-2 text-xs text-[#A78BFA]"
           >
             All Events
           </button>
@@ -91,10 +88,7 @@ function AuditLogs() {
       {/* Empty State */}
       <div className="flex min-h-[360px] flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#0B0914] px-6 text-center">
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#8B5CF6]/10">
-          <Clock3
-            size={25}
-            className="text-[#A78BFA]"
-          />
+          <Clock3 size={25} className="text-[#A78BFA]" />
         </div>
 
         <h2 className="mt-5 text-base font-semibold text-white">
@@ -102,8 +96,8 @@ function AuditLogs() {
         </h2>
 
         <p className="mt-2 max-w-md text-sm leading-6 text-gray-600">
-          Security scans, authentication events, administrative actions,
-          and remediation activities will be recorded here.
+          Security scans, authentication events, administrative actions, and
+          remediation activities will be recorded here.
         </p>
       </div>
 
@@ -122,8 +116,8 @@ function AuditLogs() {
 
             <p className="mt-1 text-[11px] leading-5 text-gray-500">
               CloudShield will maintain an activity history for important
-              security and administrative operations. Backend persistence
-              can be connected in a later phase.
+              security and administrative operations. Backend persistence will
+              be connected when audit logging is implemented.
             </p>
           </div>
         </div>
@@ -149,17 +143,13 @@ function SummaryCard({
         </div>
 
         <span className="text-[10px] uppercase tracking-wider text-gray-700">
-          Coming
+          Ready
         </span>
       </div>
 
-      <p className="mt-4 text-xs text-gray-500">
-        {label}
-      </p>
+      <p className="mt-4 text-xs text-gray-500">{label}</p>
 
-      <p className="mt-1 text-xl font-semibold text-white">
-        {value}
-      </p>
+      <p className="mt-1 text-xl font-semibold text-white">{value}</p>
     </div>
   );
 }
