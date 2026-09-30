@@ -22,6 +22,7 @@ export const getRDSInstances = async () => {
       region: process.env.AWS_REGION || "ap-south-1",
       endpoint: db.Endpoint?.Address,
       port: db.Endpoint?.Port,
+      publiclyAccessible: db.PubliclyAccessible ?? false,
     })) || []
   );
 };
