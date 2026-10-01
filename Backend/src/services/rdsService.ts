@@ -7,7 +7,8 @@ const rdsClient = new RDSClient({
   region: process.env.AWS_REGION || "ap-south-1",
 });
 
-const AWS_REGION = process.env.AWS_REGION || "ap-south-1";
+const AWS_REGION =
+  process.env.AWS_REGION || "ap-south-1";
 
 export const getRDSInstances = async () => {
   const command = new DescribeDBInstancesCommand({});
@@ -24,8 +25,15 @@ export const getRDSInstances = async () => {
       region: AWS_REGION,
       endpoint: db.Endpoint?.Address,
       port: db.Endpoint?.Port,
-      publiclyAccessible: db.PubliclyAccessible ?? false,
-      storageEncrypted: db.StorageEncrypted ?? false,
+
+      publiclyAccessible:
+        db.PubliclyAccessible ?? false,
+
+      storageEncrypted:
+        db.StorageEncrypted ?? false,
+
+      backupRetentionPeriod:
+        db.BackupRetentionPeriod ?? 0,
     })) || []
   );
 };
