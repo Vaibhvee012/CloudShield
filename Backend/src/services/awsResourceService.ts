@@ -10,6 +10,15 @@ export const discoverAWSResources = async () => {
   ]);
 
   const resources = [
+    {
+  id: "aws-account",
+  name: "AWS Account",
+  type: "IAM",
+  region: "global",
+  status: "active",
+  environment: "production",
+  riskLevel: "low",
+},
     ...ec2Instances.map((instance) => ({
       id: instance.id!,
       name: instance.name,

@@ -63,7 +63,27 @@ export const syncAWSSecurityFindings = async () => {
         },
         {
           id: {
+            startsWith: "ec2-sg-ssh-",
+          },
+        },
+        {
+          id: {
+            startsWith: "ec2-sg-rdp-",
+          },
+        },
+        {
+          id: {
+            startsWith: "ec2-sg-open-all-",
+          },
+        },
+        {
+          id: {
             startsWith: "s3-public-access-",
+          },
+        },
+        {
+          id: {
+            startsWith: "s3-encryption-",
           },
         },
         {
