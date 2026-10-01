@@ -1,6 +1,8 @@
 import {
   IAMClient,
   GetAccountSummaryCommand,
+  ListUsersCommand,
+  ListAccessKeysCommand,
 } from "@aws-sdk/client-iam";
 
 const iamClient = new IAMClient({
@@ -25,4 +27,61 @@ export const checkRootAccountMFA = async () => {
       ? "Root account MFA is enabled."
       : "Root account MFA is not enabled.",
   };
+};
+
+export const scanIAMAccessKeys = async () => {
+  const usersResponse = await iamClient.send(
+    new ListUsersCommand({})
+  );
+
+  const users = usersResponse.Users || [];
+
+  const findings = [];
+
+  const now = Date.now();
+  const ninetyDays =
+    90 * 24 * 60 * 60 * 1000;
+
+  for (const user of users) {
+    if (!user.UserName) {
+      continue;
+    }
+
+    const response = await iamClient.send(
+      new ListAccessKeysCommand({
+        UserName: user.UserName,
+      })
+    );
+
+    for (const accessKey of response.AccessKeyMetadata || []) {
+      if (
+        !accessKey.AccessKeyId ||
+        !accessKey.CreateDate
+      ) {
+        continue;
+      }
+
+      const age =
+        now - accessKey.CreateDate.getTime();
+
+      if (
+        age > ninetyDays &&
+        accessKey.Status === "Active"
+      ) {
+        findings.push({
+          id: `iam-old-access-key-${user.UserName}-${accessKey.AccessKeyId}`,
+          title: "IAM Access Key Is Older Than 90 Days",
+          severity: "HIGH",
+          resourceId: "aws-account",
+          resourceType: "IAM",
+          region: "global",
+          status: "OPEN",
+          category: "Identity & Access",
+          description: `IAM user ${user.UserName} has an active access key older than 90 days.`,
+        });
+      }
+    }
+  }
+
+  return findings;
 };

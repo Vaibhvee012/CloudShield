@@ -5,7 +5,10 @@ import {
 import { getS3Buckets } from "./s3Service";
 import { checkS3Encryption } from "./s3SecurityService";
 import { getRDSInstances } from "./rdsService";
-import { checkRootAccountMFA } from "./iamService";
+import {
+  checkRootAccountMFA,
+  scanIAMAccessKeys,
+} from "./iamService";
 export const scanAWSSecurity = async () => {
   const [
     ec2Instances,
@@ -20,7 +23,7 @@ export const scanAWSSecurity = async () => {
   ]);
 
   const rootMFAResult = await checkRootAccountMFA();
-
+  
   const findings = [];
 
   // -------------------------
