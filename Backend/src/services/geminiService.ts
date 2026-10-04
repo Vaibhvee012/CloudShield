@@ -15,9 +15,27 @@ const model = genAI.getGenerativeModel({
 export const generateAIResponse = async (
   prompt: string
 ): Promise<string> => {
-  const result = await model.generateContent(prompt);
+  try {
+    if (!prompt || !prompt.trim()) {
+      throw new Error("AI prompt cannot be empty");
+    }
 
-  return result.response.text();
+    const result = await model.generateContent(prompt);
+
+    const response = result.response.text();
+
+    if (!response || !response.trim()) {
+      throw new Error("Gemini returned an empty response");
+    }
+
+    return response.trim();
+  } catch (error) {
+    console.error("Gemini AI generation error:", error);
+
+    throw new Error(
+      "CloudShield AI is temporarily unavailable"
+    );
+  }
 };
 
 export const buildCloudShieldPrompt = (
