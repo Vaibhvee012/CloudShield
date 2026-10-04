@@ -630,7 +630,6 @@ The current implementation is suitable for demonstrating:
 **Vaibhvee Prakash**
 
 - GitHub: [Vaibhvee012](https://github.com/Vaibhvee012)
-- Portfolio: [vaibhvee-portfolio.vercel.app](https://vaibhvee-portfolio.vercel.app/)
 
 ## Repository
 
