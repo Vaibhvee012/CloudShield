@@ -8,6 +8,7 @@ import {
 } from "../services/geminiService";
 import prisma from "../lib/prisma";
 
+
 export const chatWithAI = async (
   req: Request,
   res: Response
@@ -22,10 +23,26 @@ export const chatWithAI = async (
       });
     }
 
+    const trimmedQuestion = question.trim();
+
+    if (trimmedQuestion.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Question cannot be empty",
+      });
+    }
+
+    if (trimmedQuestion.length > 2000) {
+      return res.status(400).json({
+        success: false,
+        message: "Question must be 2000 characters or less",
+      });
+    }
+
     const securityContext = await buildSecurityContext();
 
     const prompt = buildCloudShieldPrompt(
-      question,
+      trimmedQuestion,
       securityContext
     );
 
@@ -46,6 +63,7 @@ export const chatWithAI = async (
     });
   }
 };
+
 
 export const explainFinding = async (
   req: Request,
@@ -273,7 +291,7 @@ Finding:
 - Region: ${finding.region}
 - Status: ${finding.status}
 
-Existing remediation:
+Existing rchatWithAIemediation:
 ${
   existingRemediation
     ? `${existingRemediation.title}: ${existingRemediation.action}`
