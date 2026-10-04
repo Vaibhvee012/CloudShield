@@ -9,7 +9,7 @@ import securityRoutes from "./routes/security.routes";
 import remediationRoutes from "./routes/remediation.routes";
 import authRoutes from "./routes/auth.routes";
 import "dotenv/config";
-import awsRoutes from "./routes/awsRoutes";
+import awsRoutes from "./routes/aws.routes";
 import { startScheduler } from "./jobs/scheduler";
 
 dotenv.config();
