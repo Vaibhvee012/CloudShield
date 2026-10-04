@@ -3,6 +3,7 @@ import {
   chatWithAI,
   explainFinding,
   prioritizeRisks,
+  suggestRemediation,
 } from "../controllers/ai.controller";
 import { authenticate } from "../middleware/auth.middleware";
 
@@ -20,6 +21,12 @@ router.post(
   "/risks/prioritize",
   authenticate,
   prioritizeRisks
+);
+
+router.post(
+  "/findings/:id/remediation",
+  authenticate,
+  suggestRemediation
 );
 
 export default router;

@@ -224,3 +224,98 @@ Prioritization rules:
     });
   }
 };
+
+export const suggestRemediation = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const id = String(req.params.id);
+
+    const finding = await prisma.finding.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!finding) {
+      return res.status(404).json({
+        success: false,
+        message: "Finding not found",
+      });
+    }
+
+    const resource = await prisma.resource.findUnique({
+      where: {
+        id: finding.resourceId,
+      },
+    });
+
+    const existingRemediation =
+      await prisma.remediationAction.findUnique({
+        where: {
+          findingId: finding.id,
+        },
+      });
+
+    const prompt = `
+You are CloudShield AI, an AWS cloud security remediation advisor.
+
+Create a practical remediation plan for the following security finding.
+
+Finding:
+- Title: ${finding.title}
+- Severity: ${finding.severity}
+- Category: ${finding.category}
+- Description: ${finding.description}
+- Resource: ${resource?.name ?? "Unknown resource"}
+- Resource Type: ${finding.resourceType}
+- Region: ${finding.region}
+- Status: ${finding.status}
+
+Existing remediation:
+${
+  existingRemediation
+    ? `${existingRemediation.title}: ${existingRemediation.action}`
+    : "No existing remediation is available."
+}
+
+Provide:
+
+1. Recommended remediation
+2. Step-by-step actions
+3. AWS service or configuration involved
+4. Expected security improvement
+5. Important caution before applying the change
+6. How to verify that the issue is fixed
+
+Rules:
+- Do not claim that you performed the remediation.
+- Do not invent AWS configuration details.
+- Do not provide credentials, secrets, or destructive commands.
+- Prefer safe, reversible actions where possible.
+- Base the recommendation only on the finding information provided.
+- Keep the response practical and concise.
+`;
+
+    const response = await generateAIResponse(prompt);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        findingId: finding.id,
+        remediation: response,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "CloudShield AI remediation suggestion error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to generate remediation suggestion",
+    });
+  }
+};
