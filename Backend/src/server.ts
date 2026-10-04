@@ -11,6 +11,7 @@ import authRoutes from "./routes/auth.routes";
 import "dotenv/config";
 import awsRoutes from "./routes/aws.routes";
 import { startScheduler } from "./jobs/scheduler";
+import aiRoutes from "./routes/ai.routes";
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use("/api/security", securityRoutes);
 app.use("/api/remediation", remediationRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/aws", awsRoutes);
+app.use("/api/ai", aiRoutes);
 
 const PORT = process.env.PORT || 5000;
 
