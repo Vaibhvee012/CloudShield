@@ -8,7 +8,6 @@ import {
 } from "../services/geminiService";
 import prisma from "../lib/prisma";
 
-
 export const chatWithAI = async (
   req: Request,
   res: Response
@@ -64,13 +63,19 @@ export const chatWithAI = async (
   }
 };
 
-
 export const explainFinding = async (
   req: Request,
   res: Response
 ) => {
   try {
-    const id = String(req.params.id);
+    const id = String(req.params.id || "").trim();
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Finding ID is required",
+      });
+    }
 
     const finding = await prisma.finding.findUnique({
       where: {
@@ -248,7 +253,14 @@ export const suggestRemediation = async (
   res: Response
 ) => {
   try {
-    const id = String(req.params.id);
+    const id = String(req.params.id || "").trim();
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Finding ID is required",
+      });
+    }
 
     const finding = await prisma.finding.findUnique({
       where: {
@@ -291,7 +303,7 @@ Finding:
 - Region: ${finding.region}
 - Status: ${finding.status}
 
-Existing rchatWithAIemediation:
+Existing remediation:
 ${
   existingRemediation
     ? `${existingRemediation.title}: ${existingRemediation.action}`
