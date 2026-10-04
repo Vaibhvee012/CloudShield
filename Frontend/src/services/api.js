@@ -105,3 +105,28 @@ export const getAWSResources = async () => {
 
   return response.json();
 };
+
+export const getDashboardAIInsight = async () => {
+  const token = localStorage.getItem("cloudshield_token");
+
+  const response = await fetch(
+    `${API_BASE_URL}/ai/dashboard/insight`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      data.message || "Failed to fetch dashboard AI insight"
+    );
+  }
+
+  return data;
+};
