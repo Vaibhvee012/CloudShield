@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   chatWithAI,
   explainFinding,
+  prioritizeRisks,
 } from "../controllers/ai.controller";
 import { authenticate } from "../middleware/auth.middleware";
 
@@ -13,6 +14,12 @@ router.post(
   "/findings/:id/explain",
   authenticate,
   explainFinding
+);
+
+router.post(
+  "/risks/prioritize",
+  authenticate,
+  prioritizeRisks
 );
 
 export default router;

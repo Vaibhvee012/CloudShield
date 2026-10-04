@@ -136,3 +136,91 @@ Rules:
     });
   }
 };
+
+export const prioritizeRisks = async (
+  _req: Request,
+  res: Response
+) => {
+  try {
+    const findings = await prisma.finding.findMany({
+      where: {
+        status: {
+          not: "RESOLVED",
+        },
+      },
+      orderBy: {
+        updatedAt: "desc",
+      },
+    });
+
+    if (findings.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          prioritization:
+            "There are currently no open security findings to prioritize.",
+        },
+      });
+    }
+
+    const prompt = `
+You are CloudShield AI, a cloud security risk prioritization engine.
+
+Analyze the following active AWS security findings and determine what the
+CloudShield user should fix first.
+
+ACTIVE FINDINGS:
+${JSON.stringify(
+  findings.map((finding) => ({
+    id: finding.id,
+    title: finding.title,
+    severity: finding.severity,
+    resourceId: finding.resourceId,
+    resourceType: finding.resourceType,
+    region: finding.region,
+    category: finding.category,
+    status: finding.status,
+    description: finding.description,
+  })),
+  null,
+  2
+)}
+
+For each prioritized finding provide:
+1. Priority rank.
+2. Finding title.
+3. Severity.
+4. Why it should be prioritized.
+5. Potential security impact.
+6. Recommended next action.
+
+Prioritization rules:
+- CRITICAL findings should generally come first.
+- HIGH findings should generally come next.
+- Consider potential data exposure, unauthorized access, internet exposure,
+  privilege escalation, and attack surface.
+- Do not invent information that is not present in the findings.
+- Do not claim that any remediation has been performed.
+- Keep the output concise and actionable.
+`;
+
+    const response = await generateAIResponse(prompt);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        prioritization: response,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "CloudShield AI risk prioritization error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to prioritize security risks",
+    });
+  }
+};
