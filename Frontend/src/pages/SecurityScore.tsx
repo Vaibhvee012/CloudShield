@@ -10,15 +10,19 @@ import {
 import { getSecurityPosture } from "../services/api";
 
 interface SecurityData {
-  score: number;
+  securityScore: number;
   totalFindings: number;
-  critical: number;
-  high: number;
-  medium: number;
-  low: number;
-  resourcesTotal: number;
-  healthyResources: number;
-  healthPercentage: number;
+  severity: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+  resources: {
+    total: number;
+    healthy: number;
+    healthPercentage: number;
+  };
 }
 
 function SecurityScore() {
@@ -31,9 +35,7 @@ function SecurityScore() {
       try {
         const response = await getSecurityPosture();
 
-        const securityData = response.data ?? response;
-
-        setData(securityData);
+        setData(response.data);
       } catch (error) {
         setError("Failed to load security score");
         console.error(error);
@@ -84,12 +86,15 @@ function SecurityScore() {
 
   const score = Math.min(
     100,
-    Math.max(0, Number(data.score) || 0)
+    Math.max(0, Number(data.securityScore) || 0)
   );
 
   const healthPercentage = Math.min(
     100,
-    Math.max(0, Number(data.healthPercentage) || 0)
+    Math.max(
+      0,
+      Number(data.resources.healthPercentage) || 0
+    )
   );
 
   const scoreStatus =
@@ -146,7 +151,7 @@ function SecurityScore() {
           </p>
 
           <p className="mt-1 text-xl font-bold text-white">
-            {data.resourcesTotal}
+            {data.resources.total}
           </p>
         </div>
       </div>
@@ -162,7 +167,7 @@ function SecurityScore() {
               </h2>
 
               <p className="mt-1 text-xs text-gray-500">
-                Based on your current security posture
+                Based on your current open security findings
               </p>
             </div>
 
@@ -256,7 +261,7 @@ function SecurityScore() {
               </div>
 
               <span className="text-sm text-gray-400">
-                {data.healthyResources}/{data.resourcesTotal}
+                {data.resources.healthy}/{data.resources.total}
               </span>
             </div>
 
@@ -273,20 +278,20 @@ function SecurityScore() {
           <div className="mt-10 space-y-4">
             <HealthRow
               label="Healthy Resources"
-              value={data.healthyResources}
+              value={data.resources.healthy}
               icon={<CheckCircle2 size={17} />}
               iconClass="text-[#22C55E]"
             />
 
             <HealthRow
               label="Resources Analyzed"
-              value={data.resourcesTotal}
+              value={data.resources.total}
               icon={<Shield size={17} />}
               iconClass="text-[#A78BFA]"
             />
 
             <HealthRow
-              label="Total Findings"
+              label="Open Findings"
               value={data.totalFindings}
               icon={<ShieldAlert size={17} />}
               iconClass="text-[#F59E0B]"
@@ -304,7 +309,7 @@ function SecurityScore() {
             </h2>
 
             <p className="mt-1 text-xs text-gray-500">
-              Findings grouped by severity
+              Open findings grouped by severity
             </p>
           </div>
 
@@ -317,28 +322,28 @@ function SecurityScore() {
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <SeverityCard
             label="Critical"
-            count={data.critical}
+            count={data.severity.critical}
             color="#EF4444"
             description="Immediate attention"
           />
 
           <SeverityCard
             label="High"
-            count={data.high}
+            count={data.severity.high}
             color="#F59E0B"
             description="High priority"
           />
 
           <SeverityCard
             label="Medium"
-            count={data.medium}
+            count={data.severity.medium}
             color="#EAB308"
             description="Review recommended"
           />
 
           <SeverityCard
             label="Low"
-            count={data.low}
+            count={data.severity.low}
             color="#22C55E"
             description="Low priority"
           />
@@ -357,25 +362,25 @@ function SecurityScore() {
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <ScoreGuide
-            range="80 – 100"
+            range="80 - 100"
             label="Strong"
             color="#22C55E"
           />
 
           <ScoreGuide
-            range="60 – 79"
+            range="60 - 79"
             label="Good"
             color="#A78BFA"
           />
 
           <ScoreGuide
-            range="40 – 59"
+            range="40 - 59"
             label="Needs Attention"
             color="#F59E0B"
           />
 
           <ScoreGuide
-            range="0 – 39"
+            range="0 - 39"
             label="Critical"
             color="#EF4444"
           />

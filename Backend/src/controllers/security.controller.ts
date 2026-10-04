@@ -6,9 +6,18 @@ export const getSecurityPosture = async (
   res: Response
 ) => {
   try {
-    const findings = await prisma.finding.findMany();
+    // Only active security findings should affect the score
+    const findings = await prisma.finding.findMany({
+      where: {
+        status: "OPEN",
+      },
+    });
 
     const resources = await prisma.resource.findMany();
+
+    // -------------------------
+    // Finding Severity Counts
+    // -------------------------
 
     const critical = findings.filter(
       (finding) => finding.severity === "CRITICAL"
@@ -28,6 +37,10 @@ export const getSecurityPosture = async (
 
     const totalFindings = findings.length;
 
+    // -------------------------
+    // Security Score
+    // -------------------------
+
     const riskPoints =
       critical * 20 +
       high * 10 +
@@ -39,11 +52,23 @@ export const getSecurityPosture = async (
       Math.min(100, 100 - riskPoints)
     );
 
+    // -------------------------
+    // Resource Health
+    // -------------------------
+
+    const resourcesWithFindings = new Set(
+      findings.map((finding) => finding.resourceId)
+    );
+
     const healthyResources = resources.filter(
       (resource) =>
-        resource.status === "Healthy" ||
-        resource.status === "running" ||
-        resource.status === "available"
+        !resourcesWithFindings.has(resource.id) &&
+        (
+          resource.status === "Healthy" ||
+          resource.status === "running" ||
+          resource.status === "available" ||
+          resource.status === "active"
+        )
     ).length;
 
     const resourceHealth =
@@ -53,17 +78,23 @@ export const getSecurityPosture = async (
             (healthyResources / resources.length) * 100
           );
 
+    // -------------------------
+    // Response
+    // -------------------------
+
     res.json({
       success: true,
       data: {
         securityScore,
         totalFindings,
+
         severity: {
           critical,
           high,
           medium,
           low,
         },
+
         resources: {
           total: resources.length,
           healthy: healthyResources,

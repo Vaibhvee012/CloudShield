@@ -8,9 +8,7 @@ import {
   ChevronRight,
   Cloud,
   Database,
-  Globe2,
   Lock,
-  Network,
   RefreshCw,
   Server,
   Shield,
@@ -35,6 +33,7 @@ import {
   getRemediationActions,
   fullAWSSync,
   getAWSSyncStatus,
+  getAWSResources,
 } from "../services/api";
 
 type SecurityData = {
@@ -129,6 +128,7 @@ const Dashboard = () => {
   const [remediationActions, setRemediationActions] = useState<any[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+  const [awsResources, setAWSResources] = useState<any[]>([]);
 
   /*
    * Load dashboard data
@@ -140,11 +140,12 @@ const Dashboard = () => {
         findingsResponse,
         remediationResponse,
         syncStatusResponse,
+        awsResourcesResponse,
       ] = await Promise.all([
         getSecurityPosture(),
         getFindings(),
         getRemediationActions(),
-        getAWSSyncStatus(),
+        getAWSSyncStatus(),        getAWSResources(),
       ]);
 
       const securityData = securityResponse.data;
@@ -172,8 +173,13 @@ const Dashboard = () => {
       setLastSyncedAt(
         syncStatusResponse.data?.lastSyncedAt ?? null
       );
+
+      setAWSResources(awsResourcesResponse.data ?? []);
     } catch (error) {
-      console.error("Failed to load dashboard data:", error);
+      console.error(
+        "Failed to load dashboard data:",
+        error
+      );
     } finally {
       setLoading(false);
     }
@@ -195,25 +201,77 @@ const Dashboard = () => {
 
       const result = await fullAWSSync();
 
-      console.log("AWS full sync completed:", result);
+      console.log(
+        "AWS full sync completed:",
+        result      );
 
-      /*
-       * Update sync time immediately
-       */
       if (result?.data?.lastSyncedAt) {
-        setLastSyncedAt(result.data.lastSyncedAt);
+        setLastSyncedAt(
+          result.data.lastSyncedAt
+        );
       }
 
-      /*
-       * Refresh dashboard data
-       */
       await loadDashboardData();
     } catch (error) {
-      console.error("AWS full sync failed:", error);
+      console.error(
+        "AWS full sync failed:",
+        error
+      );
     } finally {
       setSyncing(false);
     }
   };
+
+  /*
+   * Real AWS CloudMap data
+   */
+  const ec2Resources = awsResources.filter(
+    (resource) =>
+      resource.type?.toLowerCase() === "ec2"
+  );
+
+  const s3Resources = awsResources.filter(
+    (resource) =>
+      resource.type?.toLowerCase() === "s3"
+  );
+
+  const rdsResources = awsResources.filter(
+    (resource) =>
+      resource.type?.toLowerCase() === "rds"
+  );
+
+  const getResourceStatus = (
+    resources: any[]
+  ): "healthy" | "warning" => {
+    if (resources.length === 0) {
+      return "healthy";
+    }
+
+    const hasIssue = resources.some(
+      (resource) => {
+        const status =
+          resource.status?.toLowerCase();
+
+        return (
+          status === "disconnected" ||
+          status === "unhealthy"
+        );
+      }
+    );
+
+    return hasIssue
+      ? "warning"
+      : "healthy";
+  };
+
+  const ec2Status =
+    getResourceStatus(ec2Resources);
+
+  const s3Status =
+    getResourceStatus(s3Resources);
+
+  const rdsStatus =
+    getResourceStatus(rdsResources);
 
   const score = security.score;
 
@@ -291,7 +349,9 @@ const Dashboard = () => {
                 }`}
               />
 
-              {syncing ? "Scanning..." : "Run scan"}
+              {syncing
+                ? "Scanning..."
+                : "Run scan"}
             </button>
           </div>
         </div>
@@ -402,28 +462,36 @@ const Dashboard = () => {
                     <PostureStat
                       label="Critical"
                       value={security.critical}
-                      icon={<ShieldAlert className="h-4 w-4" />}
+                      icon={
+                        <ShieldAlert className="h-4 w-4" />
+                      }
                       type="critical"
                     />
 
                     <PostureStat
                       label="High risk"
                       value={security.high}
-                      icon={<AlertTriangle className="h-4 w-4" />}
+                      icon={
+                        <AlertTriangle className="h-4 w-4" />
+                      }
                       type="high"
                     />
 
                     <PostureStat
                       label="Medium"
                       value={security.medium}
-                      icon={<Activity className="h-4 w-4" />}
+                      icon={
+                        <Activity className="h-4 w-4" />
+                      }
                       type="medium"
                     />
 
                     <PostureStat
                       label="Resources"
                       value={security.resourcesTotal}
-                      icon={<Cloud className="h-4 w-4" />}
+                      icon={
+                        <Cloud className="h-4 w-4" />
+                      }
                       type="normal"
                     />
                   </div>
@@ -476,32 +544,48 @@ const Dashboard = () => {
                   </span>
                 </div>
 
+                {/* S3 */}
                 <InfrastructureNode
                   className="left-[10%] top-[24%]"
-                  icon={<Database className="h-4 w-4" />}
-                  label="Storage"
-                  status="healthy"
+                  icon={
+                    <Database className="h-4 w-4" />
+                  }
+                  label={`S3 · ${s3Resources.length}`}
+                  status={s3Status}
                 />
 
+                {/* EC2 */}
                 <InfrastructureNode
                   className="right-[10%] top-[24%]"
-                  icon={<Server className="h-4 w-4" />}
-                  label="Compute"
-                  status="warning"
+                  icon={
+                    <Server className="h-4 w-4" />
+                  }
+                  label={`EC2 · ${ec2Resources.length}`}
+                  status={ec2Status}
                 />
 
+                {/* RDS */}
                 <InfrastructureNode
                   className="bottom-[12%] left-[12%]"
-                  icon={<Network className="h-4 w-4" />}
-                  label="Network"
-                  status="healthy"
+                  icon={
+                    <Database className="h-4 w-4" />
+                  }
+                  label={`RDS · ${rdsResources.length}`}
+                  status={rdsStatus}
                 />
 
+                {/* AWS */}
                 <InfrastructureNode
                   className="bottom-[12%] right-[12%]"
-                  icon={<Globe2 className="h-4 w-4" />}
-                  label="Internet"
-                  status="warning"
+                  icon={
+                    <Cloud className="h-4 w-4" />
+                  }
+                  label={`AWS · ${awsResources.length}`}
+                  status={
+                    awsResources.length > 0
+                      ? "healthy"
+                      : "warning"
+                  }
                 />
               </div>
 
@@ -551,7 +635,9 @@ const Dashboard = () => {
           <MetricCard
             icon={<Zap />}
             label="Auto remediation"
-            value={remediationActions.length.toString().padStart(2, "0")}
+            value={remediationActions.length
+              .toString()
+              .padStart(2, "0")}
             detail={
               remediationActions.length === 1
                 ? "Action available"
@@ -598,7 +684,10 @@ const Dashboard = () => {
             </div>
 
             <div className="mt-6 h-[270px]">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+              >
                 <AreaChart data={postureData}>
                   <defs>
                     <linearGradient
@@ -645,7 +734,8 @@ const Dashboard = () => {
                   <Tooltip
                     contentStyle={{
                       background: "#111019",
-                      border: "1px solid rgba(255,255,255,0.1)",
+                      border:
+                        "1px solid rgba(255,255,255,0.1)",
                       borderRadius: "12px",
                       color: "#fff",
                     }}
@@ -705,18 +795,22 @@ const Dashboard = () => {
                   </p>
                 </div>
               ) : (
-                findings.slice(0, 3).map((finding) => (
-                  <FindingCard
-                    key={finding.id}
-                    title={finding.title}
-                    resource={
-                      finding.resource?.name ||
-                      finding.resourceId
-                    }
-                    severity={finding.severity}
-                    time={formatFindingTime(finding.createdAt)}
-                  />
-                ))
+                findings
+                  .slice(0, 3)
+                  .map((finding) => (
+                    <FindingCard
+                      key={finding.id}
+                      title={finding.title}
+                      resource={
+                        finding.resource?.name ||
+                        finding.resourceId
+                      }
+                      severity={finding.severity}
+                      time={formatFindingTime(
+                        finding.createdAt
+                      )}
+                    />
+                  ))
               )}
             </div>
           </div>
@@ -748,7 +842,11 @@ const Dashboard = () => {
               <p className="mt-5 text-sm leading-6 text-slate-400">
                 CloudShield AI identified{" "}
                 <span className="font-medium text-white">
-                  {Math.min(3, findings.length)} security improvements
+                  {Math.min(
+                    3,
+                    findings.length
+                  )}{" "}
+                  security improvements
                 </span>{" "}
                 that could improve your posture score.
               </p>
@@ -858,10 +956,14 @@ const PostureStat = ({
   type,
 }: PostureStatProps) => {
   const styles = {
-    critical: "text-red-400 bg-red-500/10 border-red-500/10",
-    high: "text-orange-400 bg-orange-500/10 border-orange-500/10",
-    medium: "text-amber-400 bg-amber-500/10 border-amber-500/10",
-    normal: "text-purple-300 bg-purple-500/10 border-purple-500/10",
+    critical:
+      "text-red-400 bg-red-500/10 border-red-500/10",
+    high:
+      "text-orange-400 bg-orange-500/10 border-orange-500/10",
+    medium:
+      "text-amber-400 bg-amber-500/10 border-amber-500/10",
+    normal:
+      "text-purple-300 bg-purple-500/10 border-purple-500/10",
   };
 
   return (
@@ -903,10 +1005,14 @@ const MetricCard = ({
   tone,
 }: MetricCardProps) => {
   const iconStyles = {
-    purple: "bg-purple-500/10 text-purple-300",
-    red: "bg-red-500/10 text-red-400",
-    blue: "bg-blue-500/10 text-blue-400",
-    green: "bg-emerald-500/10 text-emerald-400",
+    purple:
+      "bg-purple-500/10 text-purple-300",
+    red:
+      "bg-red-500/10 text-red-400",
+    blue:
+      "bg-blue-500/10 text-blue-400",
+    green:
+      "bg-emerald-500/10 text-emerald-400",
   };
 
   return (
@@ -1003,7 +1109,8 @@ const FindingCard = ({
   severity,
   time,
 }: FindingCardProps) => {
-  const normalizedSeverity = severity.toUpperCase();
+  const normalizedSeverity =
+    severity.toUpperCase();
 
   const severityStyle =
     normalizedSeverity === "CRITICAL"
@@ -1065,15 +1172,21 @@ const FindingCard = ({
 
 /* ---------------- HELPERS ---------------- */
 
-const formatFindingTime = (date: string) => {
-  const timestamp = new Date(date).getTime();
+const formatFindingTime = (
+  date: string
+) => {
+  const timestamp =
+    new Date(date).getTime();
 
   if (Number.isNaN(timestamp)) {
     return "Unknown";
   }
 
-  const diff = Date.now() - timestamp;
-  const minutes = Math.floor(diff / 60000);
+  const diff =
+    Date.now() - timestamp;
+
+  const minutes =
+    Math.floor(diff / 60000);
 
   if (minutes < 1) {
     return "Just now";
@@ -1083,31 +1196,45 @@ const formatFindingTime = (date: string) => {
     return `${minutes} min ago`;
   }
 
-  const hours = Math.floor(minutes / 60);
+  const hours =
+    Math.floor(minutes / 60);
 
   if (hours < 24) {
     return `${hours} hr ago`;
   }
 
-  const days = Math.floor(hours / 24);
+  const days =
+    Math.floor(hours / 24);
 
-  return `${days} day${days > 1 ? "s" : ""} ago`;
+  return `${days} day${
+    days > 1 ? "s" : ""
+  } ago`;
 };
 
-const formatSyncTime = (date: string) => {
-  const timestamp = new Date(date);
+const formatSyncTime = (
+  date: string
+) => {
+  const timestamp =
+    new Date(date);
 
-  if (Number.isNaN(timestamp.getTime())) {
+  if (
+    Number.isNaN(
+      timestamp.getTime()
+    )
+  ) {
     return "Unknown";
   }
 
-  return timestamp.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return timestamp.toLocaleString(
+    "en-IN",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }
+  );
 };
 
 export default Dashboard;

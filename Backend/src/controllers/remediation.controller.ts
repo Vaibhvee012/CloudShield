@@ -6,11 +6,19 @@ export const getRemediationActions = async (
   res: Response
 ) => {
   try {
-    const remediationActions = await prisma.remediationAction.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const remediationActions =
+      await prisma.remediationAction.findMany({
+        orderBy: {
+          createdAt: "desc",
+        },
+        include: {
+          finding: {
+            include: {
+              resource: true,
+            },
+          },
+        },
+      });
 
     res.json({
       success: true,
@@ -18,7 +26,10 @@ export const getRemediationActions = async (
       data: remediationActions,
     });
   } catch (error) {
-    console.error("Failed to fetch remediation actions:", error);
+    console.error(
+      "Failed to fetch remediation actions:",
+      error
+    );
 
     res.status(500).json({
       success: false,

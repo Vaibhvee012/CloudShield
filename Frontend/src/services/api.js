@@ -93,3 +93,15 @@ export const getAWSSyncStatus = async () => {
 
   return response.json();
 };
+
+export const getAWSResources = async () => {
+  const response = await fetch(`${API_BASE_URL}/aws/resources`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch AWS resources");
+  }
+
+  return response.json();
+};
