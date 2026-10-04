@@ -146,9 +146,9 @@ function Resources() {
           />
         </div>
 
-        <div className="mt-4 min-w-0 overflow-hidden">
-          <CloudMap resources={resources} />
-        </div>
+<div className="mt-4 w-full overflow-x-auto">
+  <CloudMap resources={resources} />
+</div>
       </div>
 
       {/* Resource Summary */}
