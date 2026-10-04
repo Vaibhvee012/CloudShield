@@ -11,8 +11,6 @@ const getAuthHeaders = () => {
     : {};
 };
 
-
-
 export const getSecurityPosture = async () => {
   const response = await fetch(`${API_BASE_URL}/security`, {
     headers: getAuthHeaders(),
@@ -24,8 +22,6 @@ export const getSecurityPosture = async () => {
 
   return response.json();
 };
-
-
 
 export const getResources = async () => {
   const response = await fetch(`${API_BASE_URL}/resources`, {
@@ -39,8 +35,6 @@ export const getResources = async () => {
   return response.json();
 };
 
-
-
 export const getFindings = async () => {
   const response = await fetch(`${API_BASE_URL}/findings`, {
     headers: getAuthHeaders(),
@@ -52,7 +46,6 @@ export const getFindings = async () => {
 
   return response.json();
 };
-
 
 export const getRemediationActions = async () => {
   const response = await fetch(`${API_BASE_URL}/remediation`, {
@@ -66,8 +59,6 @@ export const getRemediationActions = async () => {
   return response.json();
 };
 
-
-
 export const fullAWSSync = async () => {
   const response = await fetch(`${API_BASE_URL}/aws/full-sync`, {
     method: "POST",
@@ -80,7 +71,6 @@ export const fullAWSSync = async () => {
 
   return response.json();
 };
-
 
 export const getAWSSyncStatus = async () => {
   const response = await fetch(`${API_BASE_URL}/aws/sync-status`, {

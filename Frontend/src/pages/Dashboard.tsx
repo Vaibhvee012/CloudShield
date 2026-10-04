@@ -60,7 +60,7 @@ type Finding = {
   description: string;
   createdAt: string;
   updatedAt: string;
-  resource: {
+  resource?: {
     id: string;
     name: string;
     type: string;
@@ -130,6 +130,9 @@ const Dashboard = () => {
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [awsResources, setAWSResources] = useState<any[]>([]);
 
+  const [aiInsight, setAiInsight] = useState("");
+  const [aiInsightLoading, setAiInsightLoading] = useState(false);
+
   /*
    * Load dashboard data
    */
@@ -145,7 +148,8 @@ const Dashboard = () => {
         getSecurityPosture(),
         getFindings(),
         getRemediationActions(),
-        getAWSSyncStatus(),        getAWSResources(),
+        getAWSSyncStatus(),
+        getAWSResources(),
       ]);
 
       const securityData = securityResponse.data;
@@ -154,12 +158,10 @@ const Dashboard = () => {
         setSecurity({
           score: securityData.securityScore ?? 0,
           totalFindings: securityData.totalFindings ?? 0,
-
           critical: securityData.severity?.critical ?? 0,
           high: securityData.severity?.high ?? 0,
           medium: securityData.severity?.medium ?? 0,
           low: securityData.severity?.low ?? 0,
-
           resourcesTotal: securityData.resources?.total ?? 0,
           healthyResources: securityData.resources?.healthy ?? 0,
           healthPercentage:
@@ -176,12 +178,66 @@ const Dashboard = () => {
 
       setAWSResources(awsResourcesResponse.data ?? []);
     } catch (error) {
-      console.error(
-        "Failed to load dashboard data:",
-        error
-      );
+      console.error("Failed to load dashboard data:", error);
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  /*
+   * Fetch real CloudShield AI dashboard insight
+   */
+  const fetchDashboardAIInsight = useCallback(async () => {
+    try {
+      setAiInsightLoading(true);
+
+      const token = localStorage.getItem("cloudshield_token");
+
+      if (!token) {
+        setAiInsight(
+          "Please sign in to use CloudShield AI insights."
+        );
+        return;
+      }
+
+      const apiBaseUrl =
+        import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+      const response = await fetch(
+        `${apiBaseUrl}/api/ai/dashboard-insight`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.message || "Failed to generate AI insight"
+        );
+      }
+
+      setAiInsight(
+        data?.data?.insight ||
+          data?.insight ||
+          "No new AI security insight is available."
+      );
+    } catch (error) {
+      console.error(
+        "Failed to fetch dashboard AI insight:",
+        error
+      );
+
+      setAiInsight(
+        "Unable to generate a security insight right now."
+      );
+    } finally {
+      setAiInsightLoading(false);
     }
   }, []);
 
@@ -190,7 +246,11 @@ const Dashboard = () => {
    */
   useEffect(() => {
     loadDashboardData();
-  }, [loadDashboardData]);
+    fetchDashboardAIInsight();
+  }, [
+    loadDashboardData,
+    fetchDashboardAIInsight,
+  ]);
 
   /*
    * Run complete AWS synchronization
@@ -203,7 +263,8 @@ const Dashboard = () => {
 
       console.log(
         "AWS full sync completed:",
-        result      );
+        result
+      );
 
       if (result?.data?.lastSyncedAt) {
         setLastSyncedAt(
@@ -212,6 +273,7 @@ const Dashboard = () => {
       }
 
       await loadDashboardData();
+      await fetchDashboardAIInsight();
     } catch (error) {
       console.error(
         "AWS full sync failed:",
@@ -839,22 +901,34 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <p className="mt-5 text-sm leading-6 text-slate-400">
-                CloudShield AI identified{" "}
-                <span className="font-medium text-white">
-                  {Math.min(
-                    3,
-                    findings.length
-                  )}{" "}
-                  security improvements
-                </span>{" "}
-                that could improve your posture score.
-              </p>
+              <div className="mt-5 min-h-[72px]">
+                {aiInsightLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <RefreshCw className="h-4 w-4 animate-spin text-purple-300" />
+                    Analyzing your cloud security posture...
+                  </div>
+                ) : (
+                  <p className="text-sm leading-6 text-slate-400">
+                    {aiInsight ||
+                      `CloudShield AI identified ${Math.min(
+                        3,
+                        findings.length
+                      )} security improvements that could improve your posture score.`}
+                  </p>
+                )}
+              </div>
 
               <div className="mt-5 flex items-center gap-3">
-                <button className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2.5 text-xs font-semibold shadow-lg shadow-purple-900/20 hover:bg-purple-500">
+                <button
+                  onClick={fetchDashboardAIInsight}
+                  disabled={aiInsightLoading}
+                  className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2.5 text-xs font-semibold shadow-lg shadow-purple-900/20 hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-60"
+                >
                   <Bot className="h-4 w-4" />
-                  Ask CloudShield AI
+
+                  {aiInsightLoading
+                    ? "Analyzing..."
+                    : "Refresh insight"}
                 </button>
 
                 <button className="text-xs text-slate-400 hover:text-white">
@@ -1172,21 +1246,16 @@ const FindingCard = ({
 
 /* ---------------- HELPERS ---------------- */
 
-const formatFindingTime = (
-  date: string
-) => {
-  const timestamp =
-    new Date(date).getTime();
+const formatFindingTime = (date: string) => {
+  const timestamp = new Date(date).getTime();
 
   if (Number.isNaN(timestamp)) {
     return "Unknown";
   }
 
-  const diff =
-    Date.now() - timestamp;
+  const diff = Date.now() - timestamp;
 
-  const minutes =
-    Math.floor(diff / 60000);
+  const minutes = Math.floor(diff / 60000);
 
   if (minutes < 1) {
     return "Just now";
@@ -1196,45 +1265,31 @@ const formatFindingTime = (
     return `${minutes} min ago`;
   }
 
-  const hours =
-    Math.floor(minutes / 60);
+  const hours = Math.floor(minutes / 60);
 
   if (hours < 24) {
     return `${hours} hr ago`;
   }
 
-  const days =
-    Math.floor(hours / 24);
+  const days = Math.floor(hours / 24);
 
-  return `${days} day${
-    days > 1 ? "s" : ""
-  } ago`;
+  return `${days} day${days > 1 ? "s" : ""} ago`;
 };
 
-const formatSyncTime = (
-  date: string
-) => {
-  const timestamp =
-    new Date(date);
+const formatSyncTime = (date: string) => {
+  const timestamp = new Date(date);
 
-  if (
-    Number.isNaN(
-      timestamp.getTime()
-    )
-  ) {
+  if (Number.isNaN(timestamp.getTime())) {
     return "Unknown";
   }
 
-  return timestamp.toLocaleString(
-    "en-IN",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }
-  );
+  return timestamp.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
 
 export default Dashboard;
