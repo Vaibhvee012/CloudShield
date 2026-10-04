@@ -63,11 +63,11 @@ function Resources() {
       <div className="rounded-2xl border border-[#EF4444]/20 bg-[#0B0914] p-6">
         <div className="flex items-center gap-3">
           <AlertTriangle
-            className="text-[#EF4444]"
+            className="shrink-0 text-[#EF4444]"
             size={20}
           />
 
-          <div>
+          <div className="min-w-0">
             <h2 className="font-semibold text-white">
               Unable to load resources
             </h2>
@@ -92,19 +92,19 @@ function Resources() {
   }).length;
 
   return (
-    <div className="space-y-6">
+    <div className="w-full min-w-0 space-y-6">
       {/* Header */}
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
+        <div className="min-w-0">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#8B5CF6]/10">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#8B5CF6]/10">
               <Cloud
                 size={21}
                 className="text-[#A78BFA]"
               />
             </div>
 
-            <div>
+            <div className="min-w-0">
               <h1 className="text-2xl font-bold tracking-tight text-white">
                 AWS Resources
               </h1>
@@ -116,7 +116,7 @@ function Resources() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-white/10 bg-[#0B0914] px-4 py-3">
+        <div className="w-full shrink-0 rounded-xl border border-white/10 bg-[#0B0914] px-4 py-3 sm:w-auto">
           <p className="text-xs text-gray-500">
             Total Resources
           </p>
@@ -128,9 +128,9 @@ function Resources() {
       </div>
 
       {/* Cloud Map */}
-      <div className="rounded-2xl border border-white/10 bg-[#0B0914] p-6">
-        <div className="flex items-center justify-between">
-          <div>
+      <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-[#0B0914] p-4 sm:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
             <h2 className="font-semibold text-white">
               Cloud Infrastructure Map
             </h2>
@@ -142,15 +142,17 @@ function Resources() {
 
           <Globe
             size={20}
-            className="text-[#A78BFA]"
+            className="shrink-0 text-[#A78BFA]"
           />
         </div>
 
-        <CloudMap resources={resources} />
+        <div className="mt-4 min-w-0 overflow-hidden">
+          <CloudMap resources={resources} />
+        </div>
       </div>
 
       {/* Resource Summary */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard
           icon={<Server size={19} />}
           label="EC2"
@@ -177,8 +179,8 @@ function Resources() {
       </div>
 
       {/* Resource Inventory */}
-      <div className="rounded-2xl border border-white/10 bg-[#0B0914]">
-        <div className="border-b border-white/10 px-6 py-5">
+      <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-[#0B0914]">
+        <div className="border-b border-white/10 px-4 py-5 sm:px-6">
           <h2 className="font-semibold text-white">
             Resource Inventory
           </h2>
@@ -229,13 +231,13 @@ function SummaryCard({
   count: number;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-[#0B0914] p-5 transition hover:border-[#8B5CF6]/30">
-      <div className="flex items-center justify-between">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#8B5CF6]/10 text-[#A78BFA]">
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-[#0B0914] p-5 transition hover:border-[#8B5CF6]/30">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#8B5CF6]/10 text-[#A78BFA]">
           {icon}
         </div>
 
-        <span className="text-2xl font-bold text-white">
+        <span className="min-w-0 text-2xl font-bold text-white">
           {count}
         </span>
       </div>
@@ -272,43 +274,51 @@ function ResourceRow({
         : Cloud;
 
   return (
-    <div className="flex flex-col gap-4 px-6 py-4 transition hover:bg-white/[0.02] md:flex-row md:items-center md:justify-between">
+    <div className="grid min-w-0 grid-cols-1 gap-4 px-4 py-5 transition hover:bg-white/[0.02] sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,auto)] lg:items-center">
+      {/* Resource Identity */}
       <div className="flex min-w-0 items-center gap-4">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#8B5CF6]/10 text-[#A78BFA]">
           <ResourceIcon size={19} />
         </div>
 
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-white">
+        <div className="min-w-0 flex-1">
+          <p className="break-words text-sm font-medium leading-5 text-white">
             {resource.name}
           </p>
 
-          <p className="mt-1 text-xs text-gray-600">
+          <p className="mt-1 break-words text-xs leading-5 text-gray-600">
             {resource.type} · {resource.region}
           </p>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 md:justify-end">
-        <span className="rounded-lg bg-white/5 px-2.5 py-1 text-[10px] font-medium uppercase text-gray-400">
-          {resource.environment}
-        </span>
+      {/* Resource Metadata */}
+      <div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
+        <ResourceBadge value={resource.environment} />
 
-        <span className="rounded-lg bg-white/5 px-2.5 py-1 text-[10px] font-medium uppercase text-gray-400">
-          {resource.status}
-        </span>
+        <ResourceBadge value={resource.status} />
 
-        <span className="rounded-lg bg-white/5 px-2.5 py-1 text-[10px] font-medium uppercase text-gray-400">
-          {resource.source}
-        </span>
+        <ResourceBadge value={resource.source} />
 
         <span
-          className={`rounded-lg px-2.5 py-1 text-[10px] font-semibold uppercase ${riskClass}`}
+          className={`max-w-full rounded-lg px-2.5 py-1 text-[10px] font-semibold uppercase leading-4 ${riskClass}`}
         >
           {resource.riskLevel}
         </span>
       </div>
     </div>
+  );
+}
+
+function ResourceBadge({
+  value,
+}: {
+  value: string;
+}) {
+  return (
+    <span className="max-w-full break-words rounded-lg bg-white/5 px-2.5 py-1 text-[10px] font-medium uppercase leading-4 text-gray-400">
+      {value}
+    </span>
   );
 }
 
