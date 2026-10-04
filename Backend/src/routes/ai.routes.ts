@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   chatWithAI,
   explainFinding,
+  getDashboardInsight,
   prioritizeRisks,
   suggestRemediation,
 } from "../controllers/ai.controller";
@@ -27,6 +28,12 @@ router.post(
   "/findings/:id/remediation",
   authenticate,
   suggestRemediation
+);
+
+router.get(
+  "/dashboard/insight",
+  authenticate,
+  getDashboardInsight
 );
 
 export default router;

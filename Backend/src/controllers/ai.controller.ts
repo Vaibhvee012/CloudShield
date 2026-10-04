@@ -319,3 +319,56 @@ Rules:
     });
   }
 };
+
+export const getDashboardInsight = async (
+  _req: Request,
+  res: Response
+) => {
+  try {
+    const securityContext = await buildSecurityContext();
+
+    const prompt = `
+You are CloudShield AI, an AWS cloud security analyst.
+
+Generate one concise security insight for the CloudShield dashboard based
+ONLY on the security data provided below.
+
+CloudShield Security Context:
+${JSON.stringify(securityContext, null, 2)}
+
+Your response must contain:
+
+1. A short insight headline.
+2. The most important security issue right now.
+3. Why it matters.
+4. One recommended action.
+
+Rules:
+- Prioritize CRITICAL and HIGH findings.
+- Use actual findings and resources from the provided context.
+- Do not invent information.
+- Do not claim that any AWS changes have been performed.
+- Keep the response concise enough for a dashboard card.
+- Do not use markdown tables.
+`;
+
+    const response = await generateAIResponse(prompt);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        insight: response,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "CloudShield AI dashboard insight error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to generate dashboard AI insight",
+    });
+  }
+};
