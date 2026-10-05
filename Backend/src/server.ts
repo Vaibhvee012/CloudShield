@@ -28,12 +28,15 @@ validateEnvironment();
 /* Security */
 app.use(helmet());
 
-/* CORS */
+const frontendUrl = process.env.FRONTEND_URL;
+
+if (!frontendUrl) {
+  throw new Error("FRONTEND_URL is not configured");
+}
+
 app.use(
   cors({
-    origin:
-      process.env.FRONTEND_URL ||
-      "http://localhost:5173",
+    origin: frontendUrl,
   }),
 );
 
