@@ -5,7 +5,9 @@ import jwt from "jsonwebtoken";
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const { name, email, password } = req.body;
+    const name = String(req.body.name || "").trim();
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
 
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -14,16 +16,28 @@ export const register = async (req: Request, res: Response) => {
       });
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       return res.status(400).json({
         success: false,
-        message: "Password must be at least 6 characters long",
+        message: "Password must be at least 8 characters long",
       });
     }
 
-    const existingUser = await prisma.user.findUnique({
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET is not configured");
+
+      return res.status(500).json({
+        success: false,
+        message: "Server authentication configuration is missing",
+      });
+    }
+
+    const existingUser = await prisma.user.findFirst({
       where: {
-        email,
+        email: {
+          equals: email,
+          mode: "insensitive",
+        },
       },
     });
 
@@ -65,11 +79,10 @@ export const register = async (req: Request, res: Response) => {
   }
 };
 
-
-
 export const login = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
 
     if (!email || !password) {
       return res.status(400).json({
@@ -78,9 +91,21 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    const user = await prisma.user.findUnique({
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET is not configured");
+
+      return res.status(500).json({
+        success: false,
+        message: "Server authentication configuration is missing",
+      });
+    }
+
+    const user = await prisma.user.findFirst({
       where: {
-        email,
+        email: {
+          equals: email,
+          mode: "insensitive",
+        },
       },
     });
 
@@ -103,14 +128,12 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    console.log("JWT SECRET EXISTS:", !!process.env.JWT_SECRET);
-
     const token = jwt.sign(
       {
         userId: user.id,
         role: user.role,
       },
-      process.env.JWT_SECRET!,
+      process.env.JWT_SECRET,
       {
         expiresIn: "1d",
       }
