@@ -18,8 +18,12 @@ import awsRoutes from "./routes/aws.routes";
 import aiRoutes from "./routes/ai.routes";
 
 import { startScheduler } from "./jobs/scheduler";
+import { validateEnvironment } from "./config/env";
 
 const app = express();
+
+/* Environment validation */
+validateEnvironment();
 
 /* Security */
 app.use(helmet());
