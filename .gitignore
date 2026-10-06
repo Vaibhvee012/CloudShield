@@ -3,3 +3,8 @@
 .claude/
 .cursor/
 .devin/
+
+# Environment files
+.env
+.env.*
+!.env.example
