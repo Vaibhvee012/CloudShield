@@ -34,6 +34,7 @@ import {
   fullAWSSync,
   getAWSSyncStatus,
   getAWSResources,
+  getDashboardAIInsight,
 } from "../services/api";
 
 type SecurityData = {
@@ -187,59 +188,39 @@ const Dashboard = () => {
   /*
    * Fetch real CloudShield AI dashboard insight
    */
-  const fetchDashboardAIInsight = useCallback(async () => {
-    try {
-      setAiInsightLoading(true);
+const fetchDashboardAIInsight = useCallback(async () => {
+  try {
+    setAiInsightLoading(true);
 
-      const token = localStorage.getItem("cloudshield_token");
+    const token = localStorage.getItem("cloudshield_token");
 
-      if (!token) {
-        setAiInsight(
-          "Please sign in to use CloudShield AI insights."
-        );
-        return;
-      }
-
-      const apiBaseUrl =
-        import.meta.env.VITE_API_URL || "http://localhost:5000";
-
-      const response = await fetch(
-        `${apiBaseUrl}/api/ai/dashboard-insight`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data?.message || "Failed to generate AI insight"
-        );
-      }
-
+    if (!token) {
       setAiInsight(
-        data?.data?.insight ||
-          data?.insight ||
-          "No new AI security insight is available."
+        "Please sign in to use CloudShield AI insights."
       );
-    } catch (error) {
-      console.error(
-        "Failed to fetch dashboard AI insight:",
-        error
-      );
-
-      setAiInsight(
-        "Unable to generate a security insight right now."
-      );
-    } finally {
-      setAiInsightLoading(false);
+      return;
     }
-  }, []);
+
+    const data = await getDashboardAIInsight();
+
+    setAiInsight(
+      data?.data?.insight ||
+        data?.insight ||
+        "No new AI security insight is available."
+    );
+  } catch (error) {
+    console.error(
+      "Failed to fetch dashboard AI insight:",
+      error
+    );
+
+    setAiInsight(
+      "Unable to generate a security insight right now."
+    );
+  } finally {
+    setAiInsightLoading(false);
+  }
+}, []);
 
   /*
    * Initial dashboard load

@@ -13,6 +13,16 @@ import Settings from "../pages/Settings";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 
+const ProtectedRoute = () => {
+  const token = localStorage.getItem("cloudshield_token");
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <DashboardLayout />;
+};
+
 function AppRoutes() {
   return (
     <Routes>
@@ -24,7 +34,7 @@ function AppRoutes() {
         element={<Navigate to="/dashboard" replace />}
       />
 
-      <Route element={<DashboardLayout />}>
+      <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/resources" element={<Resources />} />
         <Route path="/findings" element={<Findings />} />

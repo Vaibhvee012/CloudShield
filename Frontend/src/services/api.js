@@ -117,6 +117,10 @@ export const getAWSResources = async () => {
   );
 };
 
+// ===============================
+// Dashboard AI Insight
+// ===============================
+
 export const getDashboardAIInsight = async () => {
   const response = await fetch(
     `${API_BASE_URL}/ai/dashboard/insight`,

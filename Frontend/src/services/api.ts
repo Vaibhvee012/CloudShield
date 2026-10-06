@@ -119,3 +119,22 @@ export const getAWSResources = async () => {
 
   return response.json();
 };
+
+export const getDashboardAIInsight = async () => {
+  const response = await fetch(
+    `${API_BASE_URL}/ai/dashboard/insight`,
+    {
+      method: "GET",
+      headers: {
+        ...getAuthHeaders(),
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch dashboard AI insight");
+  }
+
+  return response.json();
+};
