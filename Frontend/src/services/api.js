@@ -1,5 +1,4 @@
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_BASE_URL =import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem("cloudshield_token");
@@ -11,16 +10,35 @@ const getAuthHeaders = () => {
     : {};
 };
 
+const handleResponse = async (response, fallbackMessage) => {
+  const contentType = response.headers.get("content-type") || "";
+
+  let data = null;
+
+  if (contentType.includes("application/json")) {
+    data = await response.json();
+  } else {
+    await response.text();
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data?.message || fallbackMessage
+    );
+  }
+
+  return data;
+};
+
 export const getSecurityPosture = async () => {
   const response = await fetch(`${API_BASE_URL}/security`, {
     headers: getAuthHeaders(),
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch security posture");
-  }
-
-  return response.json();
+  return handleResponse(
+    response,
+    "Failed to fetch security posture"
+  );
 };
 
 export const getResources = async () => {
@@ -28,11 +46,10 @@ export const getResources = async () => {
     headers: getAuthHeaders(),
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch resources");
-  }
-
-  return response.json();
+  return handleResponse(
+    response,
+    "Failed to fetch resources"
+  );
 };
 
 export const getFindings = async () => {
@@ -40,11 +57,10 @@ export const getFindings = async () => {
     headers: getAuthHeaders(),
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch findings");
-  }
-
-  return response.json();
+  return handleResponse(
+    response,
+    "Failed to fetch findings"
+  );
 };
 
 export const getRemediationActions = async () => {
@@ -52,71 +68,69 @@ export const getRemediationActions = async () => {
     headers: getAuthHeaders(),
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch remediation actions");
-  }
-
-  return response.json();
+  return handleResponse(
+    response,
+    "Failed to fetch remediation actions"
+  );
 };
 
 export const fullAWSSync = async () => {
-  const response = await fetch(`${API_BASE_URL}/aws/full-sync`, {
-    method: "POST",
-    headers: getAuthHeaders(),
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/aws/full-sync`,
+    {
+      method: "POST",
+      headers: getAuthHeaders(),
+    }
+  );
 
-  if (!response.ok) {
-    throw new Error("Failed to sync AWS resources and security findings");
-  }
-
-  return response.json();
+  return handleResponse(
+    response,
+    "Failed to sync AWS resources and security findings"
+  );
 };
 
 export const getAWSSyncStatus = async () => {
-  const response = await fetch(`${API_BASE_URL}/aws/sync-status`, {
-    headers: getAuthHeaders(),
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/aws/sync-status`,
+    {
+      headers: getAuthHeaders(),
+    }
+  );
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch AWS sync status");
-  }
-
-  return response.json();
+  return handleResponse(
+    response,
+    "Failed to fetch AWS sync status"
+  );
 };
 
 export const getAWSResources = async () => {
-  const response = await fetch(`${API_BASE_URL}/aws/resources`, {
-    headers: getAuthHeaders(),
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/aws/resources`,
+    {
+      headers: getAuthHeaders(),
+    }
+  );
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch AWS resources");
-  }
-
-  return response.json();
+  return handleResponse(
+    response,
+    "Failed to fetch AWS resources"
+  );
 };
 
 export const getDashboardAIInsight = async () => {
-  const token = localStorage.getItem("cloudshield_token");
-
   const response = await fetch(
     `${API_BASE_URL}/ai/dashboard/insight`,
     {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...getAuthHeaders(),
         "Content-Type": "application/json",
       },
     }
   );
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(
-      data.message || "Failed to fetch dashboard AI insight"
-    );
-  }
-
-  return data;
+  return handleResponse(
+    response,
+    "Failed to fetch dashboard AI insight"
+  );
 };
