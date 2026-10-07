@@ -401,6 +401,7 @@ export const ModelName = {
   Finding: 'Finding',
   RemediationAction: 'RemediationAction',
   User: 'User',
+  AWSConnection: 'AWSConnection',
   SyncStatus: 'SyncStatus'
 } as const
 
@@ -417,7 +418,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "resource" | "finding" | "remediationAction" | "user" | "syncStatus"
+    modelProps: "resource" | "finding" | "remediationAction" | "user" | "aWSConnection" | "syncStatus"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -717,6 +718,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    AWSConnection: {
+      payload: Prisma.$AWSConnectionPayload<ExtArgs>
+      fields: Prisma.AWSConnectionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AWSConnectionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AWSConnectionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AWSConnectionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AWSConnectionPayload>
+        }
+        findFirst: {
+          args: Prisma.AWSConnectionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AWSConnectionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AWSConnectionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AWSConnectionPayload>
+        }
+        findMany: {
+          args: Prisma.AWSConnectionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AWSConnectionPayload>[]
+        }
+        create: {
+          args: Prisma.AWSConnectionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AWSConnectionPayload>
+        }
+        createMany: {
+          args: Prisma.AWSConnectionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AWSConnectionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AWSConnectionPayload>[]
+        }
+        delete: {
+          args: Prisma.AWSConnectionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AWSConnectionPayload>
+        }
+        update: {
+          args: Prisma.AWSConnectionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AWSConnectionPayload>
+        }
+        deleteMany: {
+          args: Prisma.AWSConnectionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AWSConnectionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AWSConnectionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AWSConnectionPayload>[]
+        }
+        upsert: {
+          args: Prisma.AWSConnectionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AWSConnectionPayload>
+        }
+        aggregate: {
+          args: Prisma.AWSConnectionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAWSConnection>
+        }
+        groupBy: {
+          args: Prisma.AWSConnectionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AWSConnectionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AWSConnectionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AWSConnectionCountAggregateOutputType> | number
+        }
+      }
+    }
     SyncStatus: {
       payload: Prisma.$SyncStatusPayload<ExtArgs>
       fields: Prisma.SyncStatusFieldRefs
@@ -888,6 +963,21 @@ export const UserScalarFieldEnum = {
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
+
+
+export const AWSConnectionScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  accountId: 'accountId',
+  roleArn: 'roleArn',
+  region: 'region',
+  status: 'status',
+  lastSyncAt: 'lastSyncAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AWSConnectionScalarFieldEnum = (typeof AWSConnectionScalarFieldEnum)[keyof typeof AWSConnectionScalarFieldEnum]
 
 
 export const SyncStatusScalarFieldEnum = {
@@ -1125,6 +1215,7 @@ export type GlobalOmitConfig = {
   finding?: Prisma.FindingOmit
   remediationAction?: Prisma.RemediationActionOmit
   user?: Prisma.UserOmit
+  aWSConnection?: Prisma.AWSConnectionOmit
   syncStatus?: Prisma.SyncStatusOmit
 }
 

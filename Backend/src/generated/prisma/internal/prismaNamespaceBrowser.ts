@@ -55,6 +55,7 @@ export const ModelName = {
   Finding: 'Finding',
   RemediationAction: 'RemediationAction',
   User: 'User',
+  AWSConnection: 'AWSConnection',
   SyncStatus: 'SyncStatus'
 } as const
 
@@ -132,6 +133,21 @@ export const UserScalarFieldEnum = {
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
+
+
+export const AWSConnectionScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  accountId: 'accountId',
+  roleArn: 'roleArn',
+  region: 'region',
+  status: 'status',
+  lastSyncAt: 'lastSyncAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AWSConnectionScalarFieldEnum = (typeof AWSConnectionScalarFieldEnum)[keyof typeof AWSConnectionScalarFieldEnum]
 
 
 export const SyncStatusScalarFieldEnum = {

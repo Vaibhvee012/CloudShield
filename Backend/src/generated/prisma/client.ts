@@ -60,6 +60,11 @@ export type RemediationAction = Prisma.RemediationActionModel
  */
 export type User = Prisma.UserModel
 /**
+ * Model AWSConnection
+ * 
+ */
+export type AWSConnection = Prisma.AWSConnectionModel
+/**
  * Model SyncStatus
  * 
  */
