@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { connectAWS } from "../controllers/awsConnection.controller";
+import { authenticate } from "../middleware/auth.middleware";
 import { getAWSAccountIdentity } from "../services/awsService";
 import { getEC2Instances } from "../services/ec2Service";
 import { getS3Buckets } from "../services/s3Service";
@@ -13,6 +15,7 @@ import { syncAWSSecurityFindings } from "../services/awsFindingPersistence";
 import prisma from "../lib/prisma";
 
 const router = Router();
+router.post("/connect", authenticate, connectAWS);
 
 router.get("/identity", async (_req, res) => {
   try {
