@@ -26,7 +26,7 @@ const Connect = () => {
             <Link2 className="h-6 w-6 text-purple-600" />
           </div>
 
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-500">
             Connect AWS Account
           </h1>
 
@@ -37,7 +37,7 @@ const Connect = () => {
         </div>
 
         {/* Connection Card */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+        <div className="rounded-2xl border border-white/10 bg-[#0B0914] p-6 shadow-xl shadow-black/20 sm:p-8">
           <div className="mb-6 flex items-start gap-3 rounded-xl bg-purple-50 p-4">
             <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-purple-600" />
 
@@ -58,7 +58,7 @@ const Connect = () => {
             <div>
               <label
                 htmlFor="accountId"
-                className="mb-2 block text-sm font-medium text-gray-700"
+                className="mb-2 block text-sm font-medium text-gray-300"
               >
                 AWS Account ID
               </label>
@@ -71,7 +71,7 @@ const Connect = () => {
                 placeholder="123456789012"
                 maxLength={12}
                 required
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
+                className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-gray-600 outline-none transition focus:border-[#8B5CF6] focus:ring-2 focus:ring-[#8B5CF6]/20"
               />
 
               <p className="mt-1.5 text-xs text-gray-500">
@@ -117,32 +117,38 @@ const Connect = () => {
                 id="region"
                 value={region}
                 onChange={(e) => setRegion(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
-              >
-                <option value="ap-south-1">
-                  Asia Pacific (Mumbai) — ap-south-1
-                </option>
-                <option value="ap-south-2">
-                  Asia Pacific (Hyderabad) — ap-south-2
-                </option>
-                <option value="us-east-1">
-                  US East (N. Virginia) — us-east-1
-                </option>
-                <option value="us-east-2">
-                  US East (Ohio) — us-east-2
-                </option>
-                <option value="us-west-1">
-                  US West (N. California) — us-west-1
-                </option>
-                <option value="us-west-2">
-                  US West (Oregon) — us-west-2
-                </option>
-                <option value="eu-west-1">
-                  Europe (Ireland) — eu-west-1
-                </option>
-                <option value="eu-central-1">
-                  Europe (Frankfurt) — eu-central-1
-                </option>
+                className="w-full rounded-lg border border-white/10 bg-[#0B0914] px-4 py-3 text-sm text-white outline-none transition focus:border-[#8B5CF6] focus:ring-2 focus:ring-[#8B5CF6]/20"              >
+                <option value="ap-south-1" className="bg-[#0B0914] text-white">
+  Asia Pacific (Mumbai) — ap-south-1
+</option>
+
+<option value="ap-south-2" className="bg-[#0B0914] text-white">
+  Asia Pacific (Hyderabad) — ap-south-2
+</option>
+
+<option value="us-east-1" className="bg-[#0B0914] text-white">
+  US East (N. Virginia) — us-east-1
+</option>
+
+<option value="us-east-2" className="bg-[#0B0914] text-white">
+  US East (Ohio) — us-east-2
+</option>
+
+<option value="us-west-1" className="bg-[#0B0914] text-white">
+  US West (N. California) — us-west-1
+</option>
+
+<option value="us-west-2" className="bg-[#0B0914] text-white">
+  US West (Oregon) — us-west-2
+</option>
+
+<option value="eu-west-1" className="bg-[#0B0914] text-white">
+  Europe (Ireland) — eu-west-1
+</option>
+
+<option value="eu-central-1" className="bg-[#0B0914] text-white">
+  Europe (Frankfurt) — eu-central-1
+</option>
               </select>
             </div>
 
