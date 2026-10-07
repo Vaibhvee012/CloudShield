@@ -9,7 +9,7 @@ import AIAssistant from "../pages/AIAssistant";
 import Remediation from "../pages/Remediation";
 import AuditLogs from "../pages/AuditLogs";
 import Settings from "../pages/Settings";
-
+import Connect from "../pages/Connect";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 
@@ -43,6 +43,7 @@ function AppRoutes() {
         <Route path="/remediation" element={<Remediation />} />
         <Route path="/audit-logs" element={<AuditLogs />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/connect" element={<Connect />} />
       </Route>
     </Routes>
   );

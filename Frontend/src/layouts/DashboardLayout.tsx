@@ -1,5 +1,5 @@
-import {Bell, ChevronDown, UserCircle} from "lucide-react";
-import { Outlet } from "react-router-dom";
+import {Bell, ChevronDown,Link2, UserCircle} from "lucide-react";
+import { Outlet, Link } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 
 function DashboardLayout() {
@@ -40,6 +40,16 @@ function DashboardLayout() {
 
           {/* Header Actions */}
           <div className="flex items-center gap-5">
+
+
+            <Link
+  to="/connect"
+  className="flex items-center gap-2 rounded-lg bg-[#8B5CF6] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#7C3AED]"
+>
+  <Link2 size={16} strokeWidth={1.8} />
+  Connect AWS
+</Link>
+
             {/* Notification */}
             <button
               type="button"
