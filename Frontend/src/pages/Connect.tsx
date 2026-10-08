@@ -1,20 +1,63 @@
 import { useState } from "react";
 import { Link2, ShieldCheck } from "lucide-react";
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 const Connect = () => {
   const [accountId, setAccountId] = useState("");
   const [roleArn, setRoleArn] = useState("");
   const [region, setRegion] = useState("ap-south-1");
 
-  const handleConnect = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const handleConnect = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // AWS connection logic will be added in Phase 9.3.
-    console.log({
-      accountId,
-      roleArn,
-      region,
-    });
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const token = localStorage.getItem("cloudshield_token");
+
+      if (!token) {
+        throw new Error("Authentication token is missing. Please log in again.");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/aws/connect`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          accountId,
+          roleArn,
+          region,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message || "Unable to connect to AWS account."
+        );
+      }
+
+      setSuccess("AWS account connected successfully.");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to connect to AWS account."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -45,6 +88,7 @@ const Connect = () => {
               <p className="text-sm font-semibold text-gray-900">
                 Secure AWS connection
               </p>
+
               <p className="mt-1 text-xs leading-5 text-gray-600">
                 CloudShield uses your IAM Role ARN to securely access your AWS
                 account through temporary AWS credentials. Your permanent AWS
@@ -83,7 +127,7 @@ const Connect = () => {
             <div>
               <label
                 htmlFor="roleArn"
-                className="mb-2 block text-sm font-medium text-gray-700"
+                className="mb-2 block text-sm font-medium text-gray-300"
               >
                 IAM Role ARN
               </label>
@@ -93,9 +137,9 @@ const Connect = () => {
                 type="text"
                 value={roleArn}
                 onChange={(e) => setRoleArn(e.target.value)}
-                placeholder="arn:aws:iam::123456789012:role/CloudShieldRole"
+                placeholder="arn:aws:iam::123456789012:role/CloudShieldReadOnly"
                 required
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
+                className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-gray-600 outline-none transition focus:border-[#8B5CF6] focus:ring-2 focus:ring-[#8B5CF6]/20"
               />
 
               <p className="mt-1.5 text-xs text-gray-500">
@@ -108,7 +152,7 @@ const Connect = () => {
             <div>
               <label
                 htmlFor="region"
-                className="mb-2 block text-sm font-medium text-gray-700"
+                className="mb-2 block text-sm font-medium text-gray-300"
               >
                 AWS Region
               </label>
@@ -117,48 +161,87 @@ const Connect = () => {
                 id="region"
                 value={region}
                 onChange={(e) => setRegion(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-[#0B0914] px-4 py-3 text-sm text-white outline-none transition focus:border-[#8B5CF6] focus:ring-2 focus:ring-[#8B5CF6]/20"              >
-                <option value="ap-south-1" className="bg-[#0B0914] text-white">
-  Asia Pacific (Mumbai) — ap-south-1
-</option>
+                className="w-full rounded-lg border border-white/10 bg-[#0B0914] px-4 py-3 text-sm text-white outline-none transition focus:border-[#8B5CF6] focus:ring-2 focus:ring-[#8B5CF6]/20"
+              >
+                <option
+                  value="ap-south-1"
+                  className="bg-[#0B0914] text-white"
+                >
+                  Asia Pacific (Mumbai) — ap-south-1
+                </option>
 
-<option value="ap-south-2" className="bg-[#0B0914] text-white">
-  Asia Pacific (Hyderabad) — ap-south-2
-</option>
+                <option
+                  value="ap-south-2"
+                  className="bg-[#0B0914] text-white"
+                >
+                  Asia Pacific (Hyderabad) — ap-south-2
+                </option>
 
-<option value="us-east-1" className="bg-[#0B0914] text-white">
-  US East (N. Virginia) — us-east-1
-</option>
+                <option
+                  value="us-east-1"
+                  className="bg-[#0B0914] text-white"
+                >
+                  US East (N. Virginia) — us-east-1
+                </option>
 
-<option value="us-east-2" className="bg-[#0B0914] text-white">
-  US East (Ohio) — us-east-2
-</option>
+                <option
+                  value="us-east-2"
+                  className="bg-[#0B0914] text-white"
+                >
+                  US East (Ohio) — us-east-2
+                </option>
 
-<option value="us-west-1" className="bg-[#0B0914] text-white">
-  US West (N. California) — us-west-1
-</option>
+                <option
+                  value="us-west-1"
+                  className="bg-[#0B0914] text-white"
+                >
+                  US West (N. California) — us-west-1
+                </option>
 
-<option value="us-west-2" className="bg-[#0B0914] text-white">
-  US West (Oregon) — us-west-2
-</option>
+                <option
+                  value="us-west-2"
+                  className="bg-[#0B0914] text-white"
+                >
+                  US West (Oregon) — us-west-2
+                </option>
 
-<option value="eu-west-1" className="bg-[#0B0914] text-white">
-  Europe (Ireland) — eu-west-1
-</option>
+                <option
+                  value="eu-west-1"
+                  className="bg-[#0B0914] text-white"
+                >
+                  Europe (Ireland) — eu-west-1
+                </option>
 
-<option value="eu-central-1" className="bg-[#0B0914] text-white">
-  Europe (Frankfurt) — eu-central-1
-</option>
+                <option
+                  value="eu-central-1"
+                  className="bg-[#0B0914] text-white"
+                >
+                  Europe (Frankfurt) — eu-central-1
+                </option>
               </select>
             </div>
+
+            {/* Status */}
+            {error && (
+              <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="rounded-lg border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-400">
+                {success}
+              </div>
+            )}
 
             {/* Connect */}
             <button
               type="submit"
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+              disabled={loading}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Link2 className="h-4 w-4" />
-              Connect AWS
+              {loading ? "Connecting..." : "Connect AWS"}
             </button>
           </form>
         </div>
