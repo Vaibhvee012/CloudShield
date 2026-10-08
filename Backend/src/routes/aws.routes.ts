@@ -1,12 +1,18 @@
 import { Router } from "express";
 import { connectAWS } from "../controllers/awsConnection.controller";
-import { authenticate } from "../middleware/auth.middleware";
+import {
+  authenticate,
+  AuthRequest,
+} from "../middleware/auth.middleware";
 import { getAWSAccountIdentity } from "../services/awsService";
 import { getEC2Instances } from "../services/ec2Service";
 import { getS3Buckets } from "../services/s3Service";
 import { getRDSInstances } from "../services/rdsService";
 import { discoverAWSResources } from "../services/awsResourceService";
-import { syncAWSResources } from "../services/awsResourcePersistence";
+import {
+  syncAWSResources,
+  syncUserAWSResources,
+} from "../services/awsResourcePersistence";
 import { checkS3PublicAccess } from "../services/s3SecurityService";
 import { scanS3Security } from "../services/s3SecurityService";
 import { syncS3SecurityFindings } from "../services/securityFindingService";
@@ -297,4 +303,67 @@ router.get("/sync-status", async (_req, res) => {
   }
 });
 
+
+router.post(
+  "/connections/:connectionId/sync",
+  authenticate,
+  async (req: AuthRequest, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: "Authentication required",
+        });
+      }
+
+const connectionId = req.params.connectionId;
+
+if (typeof connectionId !== "string") {
+  return res.status(400).json({
+    success: false,
+    message: "Invalid AWS connection ID",
+  });
+}
+      const connection =
+        await prisma.aWSConnection.findFirst({
+          where: {
+            id: connectionId,
+            userId: req.user.userId,
+          },
+        });
+
+      if (!connection) {
+        return res.status(404).json({
+          success: false,
+          message: "AWS connection not found",
+        });
+      }
+
+      const resources =
+        await syncUserAWSResources(connectionId);
+
+      return res.status(200).json({
+        success: true,
+        message:
+          "User AWS resources synced successfully",
+        data: resources,
+        count: resources.length,
+      });
+    } catch (error) {
+      console.error(
+        "User AWS resource sync failed:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Failed to sync user AWS resources",
+      });
+    }
+  }
+);
+
 export default router;
+
+

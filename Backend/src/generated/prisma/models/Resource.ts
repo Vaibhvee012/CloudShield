@@ -33,6 +33,7 @@ export type ResourceMinAggregateOutputType = {
   environment: string | null
   riskLevel: string | null
   source: string | null
+  awsConnectionId: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -46,6 +47,7 @@ export type ResourceMaxAggregateOutputType = {
   environment: string | null
   riskLevel: string | null
   source: string | null
+  awsConnectionId: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -59,6 +61,7 @@ export type ResourceCountAggregateOutputType = {
   environment: number
   riskLevel: number
   source: number
+  awsConnectionId: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -74,6 +77,7 @@ export type ResourceMinAggregateInputType = {
   environment?: true
   riskLevel?: true
   source?: true
+  awsConnectionId?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -87,6 +91,7 @@ export type ResourceMaxAggregateInputType = {
   environment?: true
   riskLevel?: true
   source?: true
+  awsConnectionId?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -100,6 +105,7 @@ export type ResourceCountAggregateInputType = {
   environment?: true
   riskLevel?: true
   source?: true
+  awsConnectionId?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -186,6 +192,7 @@ export type ResourceGroupByOutputType = {
   environment: string
   riskLevel: string
   source: string
+  awsConnectionId: string | null
   createdAt: Date
   updatedAt: Date
   _count: ResourceCountAggregateOutputType | null
@@ -220,8 +227,10 @@ export type ResourceWhereInput = {
   environment?: Prisma.StringFilter<"Resource"> | string
   riskLevel?: Prisma.StringFilter<"Resource"> | string
   source?: Prisma.StringFilter<"Resource"> | string
+  awsConnectionId?: Prisma.StringNullableFilter<"Resource"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Resource"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Resource"> | Date | string
+  awsConnection?: Prisma.XOR<Prisma.AWSConnectionNullableScalarRelationFilter, Prisma.AWSConnectionWhereInput> | null
   findings?: Prisma.FindingListRelationFilter
 }
 
@@ -234,13 +243,16 @@ export type ResourceOrderByWithRelationInput = {
   environment?: Prisma.SortOrder
   riskLevel?: Prisma.SortOrder
   source?: Prisma.SortOrder
+  awsConnectionId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  awsConnection?: Prisma.AWSConnectionOrderByWithRelationInput
   findings?: Prisma.FindingOrderByRelationAggregateInput
 }
 
 export type ResourceWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  awsConnectionId_type_name?: Prisma.ResourceAwsConnectionIdTypeNameCompoundUniqueInput
   AND?: Prisma.ResourceWhereInput | Prisma.ResourceWhereInput[]
   OR?: Prisma.ResourceWhereInput[]
   NOT?: Prisma.ResourceWhereInput | Prisma.ResourceWhereInput[]
@@ -251,10 +263,12 @@ export type ResourceWhereUniqueInput = Prisma.AtLeast<{
   environment?: Prisma.StringFilter<"Resource"> | string
   riskLevel?: Prisma.StringFilter<"Resource"> | string
   source?: Prisma.StringFilter<"Resource"> | string
+  awsConnectionId?: Prisma.StringNullableFilter<"Resource"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Resource"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Resource"> | Date | string
+  awsConnection?: Prisma.XOR<Prisma.AWSConnectionNullableScalarRelationFilter, Prisma.AWSConnectionWhereInput> | null
   findings?: Prisma.FindingListRelationFilter
-}, "id">
+}, "id" | "awsConnectionId_type_name">
 
 export type ResourceOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -265,6 +279,7 @@ export type ResourceOrderByWithAggregationInput = {
   environment?: Prisma.SortOrder
   riskLevel?: Prisma.SortOrder
   source?: Prisma.SortOrder
+  awsConnectionId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.ResourceCountOrderByAggregateInput
@@ -284,6 +299,7 @@ export type ResourceScalarWhereWithAggregatesInput = {
   environment?: Prisma.StringWithAggregatesFilter<"Resource"> | string
   riskLevel?: Prisma.StringWithAggregatesFilter<"Resource"> | string
   source?: Prisma.StringWithAggregatesFilter<"Resource"> | string
+  awsConnectionId?: Prisma.StringNullableWithAggregatesFilter<"Resource"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Resource"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Resource"> | Date | string
 }
@@ -299,6 +315,7 @@ export type ResourceCreateInput = {
   source?: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  awsConnection?: Prisma.AWSConnectionCreateNestedOneWithoutResourcesInput
   findings?: Prisma.FindingCreateNestedManyWithoutResourceInput
 }
 
@@ -311,6 +328,7 @@ export type ResourceUncheckedCreateInput = {
   environment: string
   riskLevel: string
   source?: string
+  awsConnectionId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   findings?: Prisma.FindingUncheckedCreateNestedManyWithoutResourceInput
@@ -327,6 +345,7 @@ export type ResourceUpdateInput = {
   source?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  awsConnection?: Prisma.AWSConnectionUpdateOneWithoutResourcesNestedInput
   findings?: Prisma.FindingUpdateManyWithoutResourceNestedInput
 }
 
@@ -339,6 +358,7 @@ export type ResourceUncheckedUpdateInput = {
   environment?: Prisma.StringFieldUpdateOperationsInput | string
   riskLevel?: Prisma.StringFieldUpdateOperationsInput | string
   source?: Prisma.StringFieldUpdateOperationsInput | string
+  awsConnectionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   findings?: Prisma.FindingUncheckedUpdateManyWithoutResourceNestedInput
@@ -353,6 +373,7 @@ export type ResourceCreateManyInput = {
   environment: string
   riskLevel: string
   source?: string
+  awsConnectionId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -379,8 +400,15 @@ export type ResourceUncheckedUpdateManyInput = {
   environment?: Prisma.StringFieldUpdateOperationsInput | string
   riskLevel?: Prisma.StringFieldUpdateOperationsInput | string
   source?: Prisma.StringFieldUpdateOperationsInput | string
+  awsConnectionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type ResourceAwsConnectionIdTypeNameCompoundUniqueInput = {
+  awsConnectionId: string
+  type: string
+  name: string
 }
 
 export type ResourceCountOrderByAggregateInput = {
@@ -392,6 +420,7 @@ export type ResourceCountOrderByAggregateInput = {
   environment?: Prisma.SortOrder
   riskLevel?: Prisma.SortOrder
   source?: Prisma.SortOrder
+  awsConnectionId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -405,6 +434,7 @@ export type ResourceMaxOrderByAggregateInput = {
   environment?: Prisma.SortOrder
   riskLevel?: Prisma.SortOrder
   source?: Prisma.SortOrder
+  awsConnectionId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -418,6 +448,7 @@ export type ResourceMinOrderByAggregateInput = {
   environment?: Prisma.SortOrder
   riskLevel?: Prisma.SortOrder
   source?: Prisma.SortOrder
+  awsConnectionId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -427,12 +458,26 @@ export type ResourceScalarRelationFilter = {
   isNot?: Prisma.ResourceWhereInput
 }
 
+export type ResourceListRelationFilter = {
+  every?: Prisma.ResourceWhereInput
+  some?: Prisma.ResourceWhereInput
+  none?: Prisma.ResourceWhereInput
+}
+
+export type ResourceOrderByRelationAggregateInput = {
+  _count?: Prisma.SortOrder
+}
+
 export type StringFieldUpdateOperationsInput = {
   set?: string
 }
 
 export type DateTimeFieldUpdateOperationsInput = {
   set?: Date | string
+}
+
+export type NullableStringFieldUpdateOperationsInput = {
+  set?: string | null
 }
 
 export type ResourceCreateNestedOneWithoutFindingsInput = {
@@ -449,6 +494,48 @@ export type ResourceUpdateOneRequiredWithoutFindingsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ResourceUpdateToOneWithWhereWithoutFindingsInput, Prisma.ResourceUpdateWithoutFindingsInput>, Prisma.ResourceUncheckedUpdateWithoutFindingsInput>
 }
 
+export type ResourceCreateNestedManyWithoutAwsConnectionInput = {
+  create?: Prisma.XOR<Prisma.ResourceCreateWithoutAwsConnectionInput, Prisma.ResourceUncheckedCreateWithoutAwsConnectionInput> | Prisma.ResourceCreateWithoutAwsConnectionInput[] | Prisma.ResourceUncheckedCreateWithoutAwsConnectionInput[]
+  connectOrCreate?: Prisma.ResourceCreateOrConnectWithoutAwsConnectionInput | Prisma.ResourceCreateOrConnectWithoutAwsConnectionInput[]
+  createMany?: Prisma.ResourceCreateManyAwsConnectionInputEnvelope
+  connect?: Prisma.ResourceWhereUniqueInput | Prisma.ResourceWhereUniqueInput[]
+}
+
+export type ResourceUncheckedCreateNestedManyWithoutAwsConnectionInput = {
+  create?: Prisma.XOR<Prisma.ResourceCreateWithoutAwsConnectionInput, Prisma.ResourceUncheckedCreateWithoutAwsConnectionInput> | Prisma.ResourceCreateWithoutAwsConnectionInput[] | Prisma.ResourceUncheckedCreateWithoutAwsConnectionInput[]
+  connectOrCreate?: Prisma.ResourceCreateOrConnectWithoutAwsConnectionInput | Prisma.ResourceCreateOrConnectWithoutAwsConnectionInput[]
+  createMany?: Prisma.ResourceCreateManyAwsConnectionInputEnvelope
+  connect?: Prisma.ResourceWhereUniqueInput | Prisma.ResourceWhereUniqueInput[]
+}
+
+export type ResourceUpdateManyWithoutAwsConnectionNestedInput = {
+  create?: Prisma.XOR<Prisma.ResourceCreateWithoutAwsConnectionInput, Prisma.ResourceUncheckedCreateWithoutAwsConnectionInput> | Prisma.ResourceCreateWithoutAwsConnectionInput[] | Prisma.ResourceUncheckedCreateWithoutAwsConnectionInput[]
+  connectOrCreate?: Prisma.ResourceCreateOrConnectWithoutAwsConnectionInput | Prisma.ResourceCreateOrConnectWithoutAwsConnectionInput[]
+  upsert?: Prisma.ResourceUpsertWithWhereUniqueWithoutAwsConnectionInput | Prisma.ResourceUpsertWithWhereUniqueWithoutAwsConnectionInput[]
+  createMany?: Prisma.ResourceCreateManyAwsConnectionInputEnvelope
+  set?: Prisma.ResourceWhereUniqueInput | Prisma.ResourceWhereUniqueInput[]
+  disconnect?: Prisma.ResourceWhereUniqueInput | Prisma.ResourceWhereUniqueInput[]
+  delete?: Prisma.ResourceWhereUniqueInput | Prisma.ResourceWhereUniqueInput[]
+  connect?: Prisma.ResourceWhereUniqueInput | Prisma.ResourceWhereUniqueInput[]
+  update?: Prisma.ResourceUpdateWithWhereUniqueWithoutAwsConnectionInput | Prisma.ResourceUpdateWithWhereUniqueWithoutAwsConnectionInput[]
+  updateMany?: Prisma.ResourceUpdateManyWithWhereWithoutAwsConnectionInput | Prisma.ResourceUpdateManyWithWhereWithoutAwsConnectionInput[]
+  deleteMany?: Prisma.ResourceScalarWhereInput | Prisma.ResourceScalarWhereInput[]
+}
+
+export type ResourceUncheckedUpdateManyWithoutAwsConnectionNestedInput = {
+  create?: Prisma.XOR<Prisma.ResourceCreateWithoutAwsConnectionInput, Prisma.ResourceUncheckedCreateWithoutAwsConnectionInput> | Prisma.ResourceCreateWithoutAwsConnectionInput[] | Prisma.ResourceUncheckedCreateWithoutAwsConnectionInput[]
+  connectOrCreate?: Prisma.ResourceCreateOrConnectWithoutAwsConnectionInput | Prisma.ResourceCreateOrConnectWithoutAwsConnectionInput[]
+  upsert?: Prisma.ResourceUpsertWithWhereUniqueWithoutAwsConnectionInput | Prisma.ResourceUpsertWithWhereUniqueWithoutAwsConnectionInput[]
+  createMany?: Prisma.ResourceCreateManyAwsConnectionInputEnvelope
+  set?: Prisma.ResourceWhereUniqueInput | Prisma.ResourceWhereUniqueInput[]
+  disconnect?: Prisma.ResourceWhereUniqueInput | Prisma.ResourceWhereUniqueInput[]
+  delete?: Prisma.ResourceWhereUniqueInput | Prisma.ResourceWhereUniqueInput[]
+  connect?: Prisma.ResourceWhereUniqueInput | Prisma.ResourceWhereUniqueInput[]
+  update?: Prisma.ResourceUpdateWithWhereUniqueWithoutAwsConnectionInput | Prisma.ResourceUpdateWithWhereUniqueWithoutAwsConnectionInput[]
+  updateMany?: Prisma.ResourceUpdateManyWithWhereWithoutAwsConnectionInput | Prisma.ResourceUpdateManyWithWhereWithoutAwsConnectionInput[]
+  deleteMany?: Prisma.ResourceScalarWhereInput | Prisma.ResourceScalarWhereInput[]
+}
+
 export type ResourceCreateWithoutFindingsInput = {
   id: string
   name: string
@@ -460,6 +547,7 @@ export type ResourceCreateWithoutFindingsInput = {
   source?: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  awsConnection?: Prisma.AWSConnectionCreateNestedOneWithoutResourcesInput
 }
 
 export type ResourceUncheckedCreateWithoutFindingsInput = {
@@ -471,6 +559,7 @@ export type ResourceUncheckedCreateWithoutFindingsInput = {
   environment: string
   riskLevel: string
   source?: string
+  awsConnectionId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -502,9 +591,136 @@ export type ResourceUpdateWithoutFindingsInput = {
   source?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  awsConnection?: Prisma.AWSConnectionUpdateOneWithoutResourcesNestedInput
 }
 
 export type ResourceUncheckedUpdateWithoutFindingsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.StringFieldUpdateOperationsInput | string
+  region?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  environment?: Prisma.StringFieldUpdateOperationsInput | string
+  riskLevel?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
+  awsConnectionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type ResourceCreateWithoutAwsConnectionInput = {
+  id: string
+  name: string
+  type: string
+  region: string
+  status: string
+  environment: string
+  riskLevel: string
+  source?: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  findings?: Prisma.FindingCreateNestedManyWithoutResourceInput
+}
+
+export type ResourceUncheckedCreateWithoutAwsConnectionInput = {
+  id: string
+  name: string
+  type: string
+  region: string
+  status: string
+  environment: string
+  riskLevel: string
+  source?: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  findings?: Prisma.FindingUncheckedCreateNestedManyWithoutResourceInput
+}
+
+export type ResourceCreateOrConnectWithoutAwsConnectionInput = {
+  where: Prisma.ResourceWhereUniqueInput
+  create: Prisma.XOR<Prisma.ResourceCreateWithoutAwsConnectionInput, Prisma.ResourceUncheckedCreateWithoutAwsConnectionInput>
+}
+
+export type ResourceCreateManyAwsConnectionInputEnvelope = {
+  data: Prisma.ResourceCreateManyAwsConnectionInput | Prisma.ResourceCreateManyAwsConnectionInput[]
+  skipDuplicates?: boolean
+}
+
+export type ResourceUpsertWithWhereUniqueWithoutAwsConnectionInput = {
+  where: Prisma.ResourceWhereUniqueInput
+  update: Prisma.XOR<Prisma.ResourceUpdateWithoutAwsConnectionInput, Prisma.ResourceUncheckedUpdateWithoutAwsConnectionInput>
+  create: Prisma.XOR<Prisma.ResourceCreateWithoutAwsConnectionInput, Prisma.ResourceUncheckedCreateWithoutAwsConnectionInput>
+}
+
+export type ResourceUpdateWithWhereUniqueWithoutAwsConnectionInput = {
+  where: Prisma.ResourceWhereUniqueInput
+  data: Prisma.XOR<Prisma.ResourceUpdateWithoutAwsConnectionInput, Prisma.ResourceUncheckedUpdateWithoutAwsConnectionInput>
+}
+
+export type ResourceUpdateManyWithWhereWithoutAwsConnectionInput = {
+  where: Prisma.ResourceScalarWhereInput
+  data: Prisma.XOR<Prisma.ResourceUpdateManyMutationInput, Prisma.ResourceUncheckedUpdateManyWithoutAwsConnectionInput>
+}
+
+export type ResourceScalarWhereInput = {
+  AND?: Prisma.ResourceScalarWhereInput | Prisma.ResourceScalarWhereInput[]
+  OR?: Prisma.ResourceScalarWhereInput[]
+  NOT?: Prisma.ResourceScalarWhereInput | Prisma.ResourceScalarWhereInput[]
+  id?: Prisma.StringFilter<"Resource"> | string
+  name?: Prisma.StringFilter<"Resource"> | string
+  type?: Prisma.StringFilter<"Resource"> | string
+  region?: Prisma.StringFilter<"Resource"> | string
+  status?: Prisma.StringFilter<"Resource"> | string
+  environment?: Prisma.StringFilter<"Resource"> | string
+  riskLevel?: Prisma.StringFilter<"Resource"> | string
+  source?: Prisma.StringFilter<"Resource"> | string
+  awsConnectionId?: Prisma.StringNullableFilter<"Resource"> | string | null
+  createdAt?: Prisma.DateTimeFilter<"Resource"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"Resource"> | Date | string
+}
+
+export type ResourceCreateManyAwsConnectionInput = {
+  id: string
+  name: string
+  type: string
+  region: string
+  status: string
+  environment: string
+  riskLevel: string
+  source?: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type ResourceUpdateWithoutAwsConnectionInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.StringFieldUpdateOperationsInput | string
+  region?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  environment?: Prisma.StringFieldUpdateOperationsInput | string
+  riskLevel?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  findings?: Prisma.FindingUpdateManyWithoutResourceNestedInput
+}
+
+export type ResourceUncheckedUpdateWithoutAwsConnectionInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.StringFieldUpdateOperationsInput | string
+  region?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  environment?: Prisma.StringFieldUpdateOperationsInput | string
+  riskLevel?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  findings?: Prisma.FindingUncheckedUpdateManyWithoutResourceNestedInput
+}
+
+export type ResourceUncheckedUpdateManyWithoutAwsConnectionInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.StringFieldUpdateOperationsInput | string
@@ -557,8 +773,10 @@ export type ResourceSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   environment?: boolean
   riskLevel?: boolean
   source?: boolean
+  awsConnectionId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  awsConnection?: boolean | Prisma.Resource$awsConnectionArgs<ExtArgs>
   findings?: boolean | Prisma.Resource$findingsArgs<ExtArgs>
   _count?: boolean | Prisma.ResourceCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["resource"]>
@@ -572,8 +790,10 @@ export type ResourceSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   environment?: boolean
   riskLevel?: boolean
   source?: boolean
+  awsConnectionId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  awsConnection?: boolean | Prisma.Resource$awsConnectionArgs<ExtArgs>
 }, ExtArgs["result"]["resource"]>
 
 export type ResourceSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -585,8 +805,10 @@ export type ResourceSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   environment?: boolean
   riskLevel?: boolean
   source?: boolean
+  awsConnectionId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  awsConnection?: boolean | Prisma.Resource$awsConnectionArgs<ExtArgs>
 }, ExtArgs["result"]["resource"]>
 
 export type ResourceSelectScalar = {
@@ -598,21 +820,28 @@ export type ResourceSelectScalar = {
   environment?: boolean
   riskLevel?: boolean
   source?: boolean
+  awsConnectionId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type ResourceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "type" | "region" | "status" | "environment" | "riskLevel" | "source" | "createdAt" | "updatedAt", ExtArgs["result"]["resource"]>
+export type ResourceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "type" | "region" | "status" | "environment" | "riskLevel" | "source" | "awsConnectionId" | "createdAt" | "updatedAt", ExtArgs["result"]["resource"]>
 export type ResourceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  awsConnection?: boolean | Prisma.Resource$awsConnectionArgs<ExtArgs>
   findings?: boolean | Prisma.Resource$findingsArgs<ExtArgs>
   _count?: boolean | Prisma.ResourceCountOutputTypeDefaultArgs<ExtArgs>
 }
-export type ResourceIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
-export type ResourceIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
+export type ResourceIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  awsConnection?: boolean | Prisma.Resource$awsConnectionArgs<ExtArgs>
+}
+export type ResourceIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  awsConnection?: boolean | Prisma.Resource$awsConnectionArgs<ExtArgs>
+}
 
 export type $ResourcePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Resource"
   objects: {
+    awsConnection: Prisma.$AWSConnectionPayload<ExtArgs> | null
     findings: Prisma.$FindingPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
@@ -624,6 +853,7 @@ export type $ResourcePayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     environment: string
     riskLevel: string
     source: string
+    awsConnectionId: string | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["resource"]>
@@ -1020,6 +1250,7 @@ readonly fields: ResourceFieldRefs;
  */
 export interface Prisma__ResourceClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  awsConnection<T extends Prisma.Resource$awsConnectionArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Resource$awsConnectionArgs<ExtArgs>>): Prisma.Prisma__AWSConnectionClient<runtime.Types.Result.GetResult<Prisma.$AWSConnectionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   findings<T extends Prisma.Resource$findingsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Resource$findingsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FindingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -1058,6 +1289,7 @@ export interface ResourceFieldRefs {
   readonly environment: Prisma.FieldRef<"Resource", 'String'>
   readonly riskLevel: Prisma.FieldRef<"Resource", 'String'>
   readonly source: Prisma.FieldRef<"Resource", 'String'>
+  readonly awsConnectionId: Prisma.FieldRef<"Resource", 'String'>
   readonly createdAt: Prisma.FieldRef<"Resource", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Resource", 'DateTime'>
 }
@@ -1314,6 +1546,10 @@ export type ResourceCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extens
    */
   data: Prisma.ResourceCreateManyInput | Prisma.ResourceCreateManyInput[]
   skipDuplicates?: boolean
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ResourceIncludeCreateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1384,6 +1620,10 @@ export type ResourceUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Extens
    * Limit how many Resources to update.
    */
   limit?: number
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ResourceIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1450,6 +1690,25 @@ export type ResourceDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Inte
    * Limit how many Resources to delete.
    */
   limit?: number
+}
+
+/**
+ * Resource.awsConnection
+ */
+export type Resource$awsConnectionArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the AWSConnection
+   */
+  select?: Prisma.AWSConnectionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the AWSConnection
+   */
+  omit?: Prisma.AWSConnectionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AWSConnectionInclude<ExtArgs> | null
+  where?: Prisma.AWSConnectionWhereInput
 }
 
 /**

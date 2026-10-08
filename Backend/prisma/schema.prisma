@@ -8,19 +8,25 @@ datasource db {
 }
 
 model Resource {
-  id          String   @id
-  name        String
-  type        String
-  region      String
-  status      String
-  environment String
-  riskLevel   String
-  source      String   @default("MANUAL")
+  id              String   @id
+  name            String
+  type            String
+  region          String
+  status          String
+  environment     String
+  riskLevel       String
+  source          String   @default("MANUAL")
+  awsConnectionId String?
 
-  findings    Finding[]
+  awsConnection   AWSConnection? @relation(fields: [awsConnectionId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  findings        Finding[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([awsConnectionId])
+  @@unique([awsConnectionId, type, name])
 }
 
 model Finding {
@@ -78,6 +84,7 @@ model AWSConnection {
   lastSyncAt  DateTime?
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resources   Resource[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

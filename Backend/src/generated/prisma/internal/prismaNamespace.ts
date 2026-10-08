@@ -914,6 +914,7 @@ export const ResourceScalarFieldEnum = {
   environment: 'environment',
   riskLevel: 'riskLevel',
   source: 'source',
+  awsConnectionId: 'awsConnectionId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
