@@ -8,29 +8,29 @@ datasource db {
 }
 
 model Resource {
-  id              String   @id
+  id              String  @id
   name            String
   type            String
   region          String
   status          String
   environment     String
   riskLevel       String
-  source          String   @default("MANUAL")
+  source          String  @default("MANUAL")
   awsConnectionId String?
 
-  awsConnection   AWSConnection? @relation(fields: [awsConnectionId], references: [id], onDelete: Cascade)
+  awsConnection AWSConnection? @relation(fields: [awsConnectionId], references: [id], onDelete: Cascade)
 
-  findings        Finding[]
+  findings Finding[]
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([awsConnectionId])
   @@unique([awsConnectionId, type, name])
+  @@index([awsConnectionId])
 }
 
 model Finding {
-  id              String   @id
+  id              String  @id
   title           String
   severity        String
   resourceId      String
@@ -41,36 +41,36 @@ model Finding {
   description     String
   awsConnectionId String?
 
-  resource        Resource        @relation(fields: [resourceId], references: [id])
-  awsConnection  AWSConnection?  @relation(fields: [awsConnectionId], references: [id], onDelete: Cascade)
-  remediation     RemediationAction?
+  resource      Resource           @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  awsConnection AWSConnection?     @relation(fields: [awsConnectionId], references: [id], onDelete: Cascade)
+  remediation   RemediationAction?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([awsConnectionId])
 }
 
 model RemediationAction {
-  id            String   @id
-  findingId     String   @unique
+  id            String @id
+  findingId     String @unique
   title         String
   action        String
   status        String
   riskReduction String
 
-  finding       Finding  @relation(fields: [findingId], references: [id])
+  finding Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      String   @default("VIEWER")
+  id       String @id @default(cuid())
+  name     String
+  email    String @unique
+  password String
+  role     String @default("VIEWER")
 
   awsConnections AWSConnection[]
 
@@ -79,27 +79,27 @@ model User {
 }
 
 model AWSConnection {
-  id          String   @id @default(cuid())
-  userId      String
-  accountId   String
-  roleArn     String
-  region      String
-  status      String   @default("CONNECTED")
-  lastSyncAt  DateTime?
+  id         String    @id @default(cuid())
+  userId     String
+  accountId  String
+  roleArn    String
+  region     String
+  status     String    @default("CONNECTED")
+  lastSyncAt DateTime?
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  resources   Resource[]
-  findings    Finding[]
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resources Resource[]
+  findings  Finding[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([userId])
   @@unique([userId, accountId])
+  @@index([userId])
 }
 
 model SyncStatus {
-  id           String   @id
+  id           String    @id
   lastSyncedAt DateTime?
-  updatedAt    DateTime @updatedAt
+  updatedAt    DateTime  @updatedAt
 }
