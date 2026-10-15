@@ -8,11 +8,12 @@ const s3Client = new S3Client({
   region: process.env.AWS_REGION || "ap-south-1",
 });
 
-export const getS3Buckets = async () => {
+export const getS3Buckets = async (
+  client: S3Client = s3Client
+) => {  
   const command = new ListBucketsCommand({});
 
-  const response = await s3Client.send(command);
-
+const response = await client.send(command);
   const buckets = response.Buckets || [];
 
   const bucketDetails = await Promise.all(
@@ -24,7 +25,7 @@ export const getS3Buckets = async () => {
           Bucket: bucket.Name,
         });
 
-        const publicAccess = await s3Client.send(publicAccessCommand);
+const publicAccess = await client.send(publicAccessCommand);
 
         publicAccessBlocked =
           publicAccess.PublicAccessBlockConfiguration?.BlockPublicAcls === true &&

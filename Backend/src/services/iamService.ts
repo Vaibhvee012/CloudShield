@@ -9,10 +9,12 @@ const iamClient = new IAMClient({
   region: process.env.AWS_REGION || "ap-south-1",
 });
 
-export const checkRootAccountMFA = async () => {
+export const checkRootAccountMFA = async (
+  client: IAMClient = iamClient
+) => {
   const command = new GetAccountSummaryCommand({});
 
-  const response = await iamClient.send(command);
+const response = await client.send(command);
 
   const summary = response.SummaryMap || {};
 
@@ -29,8 +31,10 @@ export const checkRootAccountMFA = async () => {
   };
 };
 
-export const scanIAMAccessKeys = async () => {
-  const usersResponse = await iamClient.send(
+export const scanIAMAccessKeys = async (
+  client: IAMClient = iamClient
+) => {
+  const usersResponse = await client.send(
     new ListUsersCommand({})
   );
 

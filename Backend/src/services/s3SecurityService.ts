@@ -1,3 +1,4 @@
+
 import {
   GetPublicAccessBlockCommand,
   GetBucketEncryptionCommand,
@@ -12,13 +13,16 @@ const s3Client = new S3Client({
   region: process.env.AWS_REGION || "ap-south-1",
 });
 
-export const checkS3PublicAccess = async (bucketName: string) => {
+export const checkS3PublicAccess = async (
+  bucketName: string,
+  client: S3Client = s3Client
+) => {
   try {
     const command = new GetPublicAccessBlockCommand({
       Bucket: bucketName,
     });
 
-    const response = await s3Client.send(command);
+    const response = await client.send(command);
 
     const config = response.PublicAccessBlockConfiguration;
 
@@ -86,13 +90,16 @@ export const scanS3Security = async () => {
   return results;
 };
 
-export const checkS3Encryption = async (bucketName: string) => {
+export const checkS3Encryption = async (
+  bucketName: string,
+  client: S3Client = s3Client
+) => {
   try {
     const command = new GetBucketEncryptionCommand({
       Bucket: bucketName,
     });
 
-    const response = await s3Client.send(command);
+    const response = await client.send(command);
 
     const rules =
       response.ServerSideEncryptionConfiguration?.Rules || [];
@@ -132,13 +139,16 @@ export const checkS3Encryption = async (bucketName: string) => {
   }
 };
 
-export const checkS3Versioning = async (bucketName: string) => {
+export const checkS3Versioning = async (
+  bucketName: string,
+  client: S3Client = s3Client
+) => {
   try {
     const command = new GetBucketVersioningCommand({
       Bucket: bucketName,
     });
 
-    const response = await s3Client.send(command);
+    const response = await client.send(command);
 
     const enabled = response.Status === "Enabled";
 
@@ -161,13 +171,16 @@ export const checkS3Versioning = async (bucketName: string) => {
   }
 };
 
-export const checkS3Logging = async (bucketName: string) => {
+export const checkS3Logging = async (
+  bucketName: string,
+  client: S3Client = s3Client
+) => {
   try {
     const command = new GetBucketLoggingCommand({
       Bucket: bucketName,
     });
 
-    const response = await s3Client.send(command);
+    const response = await client.send(command);
 
     const loggingEnabled =
       Boolean(response.LoggingEnabled);

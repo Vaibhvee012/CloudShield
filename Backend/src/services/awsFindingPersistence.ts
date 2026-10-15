@@ -1,5 +1,11 @@
+
 import prisma from "../lib/prisma";
-import { scanAWSSecurity } from "./securityScanner";
+import {
+  scanAWSSecurity,
+  scanUserAWSSecurity,
+} from "./securityScanner";
+import { getAWSClientsFromConnection } from "./awsConnectionService";
+import { syncUserAWSResources } from "./awsResourcePersistence";
 
 const getRemediationDetails = (finding: {
   id: string;
@@ -104,17 +110,20 @@ const getRemediationDetails = (finding: {
     action:
       "Review the security finding and apply the recommended AWS security best practice.",
     riskReduction:
-      finding.severity === "CRITICAL"
+      finding.severity.toUpperCase() === "CRITICAL"
         ? "Critical"
-        : finding.severity === "HIGH"
+        : finding.severity.toUpperCase() === "HIGH"
           ? "High"
           : "Medium",
   };
 };
 
+/**
+ * Legacy/global scanner persistence.
+ * Retained for existing integrations that use the environment AWS credentials.
+ */
 export const syncAWSSecurityFindings = async () => {
   const findings = await scanAWSSecurity();
-
   const syncedFindings = [];
 
   for (const finding of findings) {
@@ -182,31 +191,29 @@ export const syncAWSSecurityFindings = async () => {
     });
   }
 
-  const currentFindingIds = findings.map(
-    (finding) => finding.id
-  );
+  const currentFindingIds = findings.map((finding) => finding.id);
 
-  const previousOpenFindings =
-    await prisma.finding.findMany({
-      where: {
-        status: "OPEN",
-        OR: [
-          { id: { startsWith: "ec2-public-ip-" } },
-          { id: { startsWith: "ec2-sg-ssh-" } },
-          { id: { startsWith: "ec2-sg-rdp-" } },
-          { id: { startsWith: "ec2-sg-open-all-" } },
-          { id: { startsWith: "s3-public-access-" } },
-          { id: { startsWith: "s3-encryption-" } },
-          { id: { startsWith: "s3-versioning-" } },
-          { id: { startsWith: "s3-logging-" } },
-          { id: { startsWith: "rds-public-access-" } },
-          { id: { startsWith: "rds-unencrypted-" } },
-          { id: { startsWith: "rds-no-backup-" } },
-          { id: { startsWith: "iam-root-mfa-disabled" } },
-          { id: { startsWith: "iam-old-access-key-" } },
-        ],
-      },
-    });
+  const previousOpenFindings = await prisma.finding.findMany({
+    where: {
+      status: "OPEN",
+      awsConnectionId: null,
+      OR: [
+        { id: { startsWith: "ec2-public-ip-" } },
+        { id: { startsWith: "ec2-sg-ssh-" } },
+        { id: { startsWith: "ec2-sg-rdp-" } },
+        { id: { startsWith: "ec2-sg-open-all-" } },
+        { id: { startsWith: "s3-public-access-" } },
+        { id: { startsWith: "s3-encryption-" } },
+        { id: { startsWith: "s3-versioning-" } },
+        { id: { startsWith: "s3-logging-" } },
+        { id: { startsWith: "rds-public-access-" } },
+        { id: { startsWith: "rds-unencrypted-" } },
+        { id: { startsWith: "rds-no-backup-" } },
+        { id: { startsWith: "iam-root-mfa-disabled" } },
+        { id: { startsWith: "iam-old-access-key-" } },
+      ],
+    },
+  });
 
   for (const finding of previousOpenFindings) {
     if (!currentFindingIds.includes(finding.id)) {
@@ -220,6 +227,178 @@ export const syncAWSSecurityFindings = async () => {
       });
     }
   }
+
+  return syncedFindings;
+};
+
+/**
+ * Scans and persists findings for one specific AWS connection.
+ */
+export const syncUserAWSSecurityFindings = async (
+  connectionId: string
+) => {
+  const connection = await prisma.aWSConnection.findUnique({
+    where: {
+      id: connectionId,
+    },
+  });
+
+  if (!connection) {
+    throw new Error("AWS connection not found");
+  }
+
+  // Refresh this connection's resources before mapping findings.
+  await syncUserAWSResources(connectionId);
+
+  const clients = await getAWSClientsFromConnection({
+    roleArn: connection.roleArn,
+    region: connection.region,
+  });
+
+  const findings = await scanUserAWSSecurity(clients);
+  const syncedFindings = [];
+
+  for (const finding of findings) {
+    // S3 scanner IDs may use "s3-" before the bucket name,
+    // while discovered S3 resources store the bucket name itself.
+    const normalizedResourceId =
+      finding.resourceType === "S3" &&
+      finding.resourceId.startsWith("s3-")
+        ? finding.resourceId.slice(3)
+        : finding.resourceId;
+
+    const resourceId =
+      `${connectionId}:${finding.resourceType}:${normalizedResourceId}`;
+
+    let resource = await prisma.resource.findFirst({
+      where: {
+        id: resourceId,
+        awsConnectionId: connectionId,
+      },
+    });
+
+    // Root-MFA and account-level IAM access-key findings refer to
+    // the AWS account rather than an individual IAM user.
+    if (!resource && finding.resourceType === "IAM") {
+      resource = await prisma.resource.upsert({
+        where: {
+          id: `${connectionId}:IAM:aws-account`,
+        },
+        update: {
+          name: `AWS Account ${connection.accountId}`,
+          status: "active",
+          source: "AWS",
+        },
+        create: {
+          id: `${connectionId}:IAM:aws-account`,
+          name: `AWS Account ${connection.accountId}`,
+          type: "IAM",
+          region: "global",
+          status: "active",
+          environment: "AWS",
+          riskLevel: "LOW",
+          source: "AWS",
+          awsConnectionId: connectionId,
+        },
+      });
+    }
+
+    if (!resource) {
+      console.warn(
+        `Skipping finding ${finding.id}: connection resource ${resourceId} not found`
+      );
+      continue;
+    }
+
+    // Prefix IDs with the connection ID to prevent collisions between
+    // separate AWS accounts or connections.
+    const findingId = `${connectionId}:${finding.id}`;
+
+    const syncedFinding = await prisma.finding.upsert({
+      where: {
+        id: findingId,
+      },
+      update: {
+        title: finding.title,
+        severity: finding.severity,
+        resourceId: resource.id,
+        resourceType: finding.resourceType,
+        region: finding.region,
+        status: "OPEN",
+        category: finding.category,
+        description: finding.description,
+        awsConnectionId: connectionId,
+      },
+      create: {
+        id: findingId,
+        title: finding.title,
+        severity: finding.severity,
+        resourceId: resource.id,
+        resourceType: finding.resourceType,
+        region: finding.region,
+        status: "OPEN",
+        category: finding.category,
+        description: finding.description,
+        awsConnectionId: connectionId,
+      },
+    });
+
+    syncedFindings.push(syncedFinding);
+
+    const remediation = getRemediationDetails(finding);
+
+    await prisma.remediationAction.upsert({
+      where: {
+        findingId,
+      },
+      update: {
+        title: `Remediate: ${finding.title}`,
+        action: remediation.action,
+        riskReduction: remediation.riskReduction,
+      },
+      create: {
+        id: `remediation-${findingId}`,
+        findingId,
+        title: `Remediate: ${finding.title}`,
+        action: remediation.action,
+        status: "PENDING",
+        riskReduction: remediation.riskReduction,
+      },
+    });
+  }
+
+  // Resolve only previously open findings belonging to this connection.
+  // An empty scan resolves its old findings only after the scan succeeds.
+  const currentFindingIds = findings.map(
+    (finding) => `${connectionId}:${finding.id}`
+  );
+
+  await prisma.finding.updateMany({
+    where: {
+      awsConnectionId: connectionId,
+      status: "OPEN",
+      ...(currentFindingIds.length > 0
+        ? {
+            id: {
+              notIn: currentFindingIds,
+            },
+          }
+        : {}),
+    },
+    data: {
+      status: "RESOLVED",
+    },
+  });
+
+  await prisma.aWSConnection.update({
+    where: {
+      id: connectionId,
+    },
+    data: {
+      lastSyncAt: new Date(),
+      status: "CONNECTED",
+    },
+  });
 
   return syncedFindings;
 };

@@ -932,6 +932,7 @@ export const FindingScalarFieldEnum = {
   status: 'status',
   category: 'category',
   description: 'description',
+  awsConnectionId: 'awsConnectionId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

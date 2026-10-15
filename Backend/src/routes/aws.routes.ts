@@ -1,313 +1,239 @@
-import { Router } from "express";
+
+import { Router, Response } from "express";
+import prisma from "../lib/prisma";
 import { connectAWS } from "../controllers/awsConnection.controller";
 import {
   authenticate,
   AuthRequest,
 } from "../middleware/auth.middleware";
-import { getAWSAccountIdentity } from "../services/awsService";
-import { getEC2Instances } from "../services/ec2Service";
-import { getS3Buckets } from "../services/s3Service";
-import { getRDSInstances } from "../services/rdsService";
-import { discoverAWSResources } from "../services/awsResourceService";
-import {
-  syncAWSResources,
-  syncUserAWSResources,
-} from "../services/awsResourcePersistence";
-import { checkS3PublicAccess } from "../services/s3SecurityService";
-import { scanS3Security } from "../services/s3SecurityService";
-import { syncS3SecurityFindings } from "../services/securityFindingService";
-import { scanAWSSecurity } from "../services/securityScanner";
-import { syncAWSSecurityFindings } from "../services/awsFindingPersistence";
-import prisma from "../lib/prisma";
+import { syncUserAWSSecurityFindings } from "../services/awsFindingPersistence";
 
 const router = Router();
-router.post("/connect", authenticate, connectAWS);
 
-router.get("/identity", async (_req, res) => {
+router.use(authenticate);
+
+// Connect an AWS account.
+router.post("/connect", connectAWS);
+
+// List the signed-in user's AWS connections.
+router.get("/connections", async (req: AuthRequest, res: Response) => {
   try {
-    const identity = await getAWSAccountIdentity();
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
 
-    res.json({
+    const connections = await prisma.aWSConnection.findMany({
+      where: { userId: req.user.userId },
+      select: {
+        id: true,
+        accountId: true,
+        region: true,
+        status: true,
+        lastSyncAt: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return res.json({
       success: true,
-      data: identity,
+      data: connections,
     });
   } catch (error) {
-    console.error("AWS identity error:", error);
-
-    res.status(500).json({
+    console.error("AWS connections fetch failed:", error);
+    return res.status(500).json({
       success: false,
-      message: "Failed to connect to AWS",
+      message: "Failed to fetch AWS connections",
     });
   }
 });
 
-
-router.get("/ec2", async (_req, res) => {
+// List resources belonging only to the signed-in user's connections.
+router.get("/resources", async (req: AuthRequest, res: Response) => {
   try {
-    const instances = await getEC2Instances();
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
 
-    res.json({
-      success: true,
-      data: instances,
+    const resources = await prisma.resource.findMany({
+      where: {
+        awsConnection: {
+          userId: req.user.userId,
+        },
+      },
+      orderBy: { updatedAt: "desc" },
     });
-  } catch (error) {
-    console.error("EC2 discovery error:", error);
 
-    res.status(500).json({
-      success: false,
-      message: "Failed to discover EC2 instances",
-    });
-  }
-});
-
-router.get("/s3", async (_req, res) => {
-  try {
-    const buckets = await getS3Buckets();
-
-    res.json({
-      success: true,
-      data: buckets,
-    });
-  } catch (error) {
-    console.error("S3 discovery error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to discover S3 buckets",
-    });
-  }
-});
-
-router.get("/rds", async (_req, res) => {
-  try {
-    const instances = await getRDSInstances();
-
-    res.json({
-      success: true,
-      data: instances,
-    });
-  } catch (error) {
-    console.error("RDS discovery error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to discover RDS instances",
-    });
-  }
-});
-
-
-router.get("/resources", async (_req, res) => {
-  try {
-    const resources = await discoverAWSResources();
-
-    res.json({
+    return res.json({
       success: true,
       data: resources,
+      count: resources.length,
     });
   } catch (error) {
-    console.error("AWS resource discovery error:", error);
-
-    res.status(500).json({
+    console.error("AWS resources fetch failed:", error);
+    return res.status(500).json({
       success: false,
-      message: "Failed to discover AWS resources",
+      message: "Failed to fetch AWS resources",
     });
   }
 });
 
-router.post("/sync", async (_req, res) => {
+// List findings belonging only to the signed-in user's connections.
+router.get("/findings", async (req: AuthRequest, res: Response) => {
   try {
-    const resources = await syncAWSResources();
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
 
-    res.json({
+    const findings = await prisma.finding.findMany({
+      where: {
+        awsConnection: {
+          userId: req.user.userId,
+        },
+      },
+      include: {
+        remediation: true,
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+
+    return res.json({
       success: true,
-      message: "AWS resources synced successfully",
-      data: resources,
-    });
-  } catch (error) {
-    console.error("AWS resource sync error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to sync AWS resources",
-    });
-  }
-});
-
-
-
-router.get("/security/s3", async (req, res) => {
-  try {
-    const bucketName =
-      "aws-sam-cli-managed-default-samclisourcebucket-zmoh9fqnfqu5";
-
-    const result = await checkS3PublicAccess(bucketName);
-
-    res.json({
-      success: true,
-      data: result,
-    });
-  } catch (error) {
-    console.error("S3 security scan failed:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to scan S3 bucket",
-    });
-  }
-});
-
-
-router.get("/security/s3/scan", async (req, res) => {
-  try {
-    const results = await scanS3Security();
-
-    res.json({
-      success: true,
-      count: results.length,
-      data: results,
-    });
-  } catch (error) {
-    console.error("S3 security scan failed:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to scan S3 buckets",
-    });
-  }
-});
-
-router.post("/security/s3/sync", async (req, res) => {
-  try {
-    const findings = await syncS3SecurityFindings();
-
-    res.json({
-      success: true,
-      count: findings.length,
       data: findings,
+      count: findings.length,
     });
   } catch (error) {
-    console.error(
-      "S3 security finding sync failed:",
-      error
+    console.error("AWS findings fetch failed:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch AWS findings",
+    });
+  }
+});
+
+// Calculate a project-defined security score for this user's AWS resources.
+router.get("/security/score", async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const connections = await prisma.aWSConnection.findMany({
+      where: { userId: req.user.userId },
+      select: { id: true },
+    });
+
+    const connectionIds = connections.map((connection) => connection.id);
+
+    if (connectionIds.length === 0) {
+      return res.json({
+        success: true,
+        connected: false,
+        score: null,
+        resources: 0,
+        findings: 0,
+        openFindings: 0,
+        severity: {
+          critical: 0,
+          high: 0,
+          medium: 0,
+          low: 0,
+        },
+      });
+    }
+
+    const [resources, findings] = await Promise.all([
+      prisma.resource.count({
+        where: {
+          awsConnectionId: { in: connectionIds },
+          status: { not: "disconnected" },
+        },
+      }),
+      prisma.finding.findMany({
+        where: {
+          awsConnectionId: { in: connectionIds },
+        },
+        select: {
+          severity: true,
+          status: true,
+        },
+      }),
+    ]);
+
+    const openFindings = findings.filter(
+      (finding) => finding.status === "OPEN"
     );
 
-    res.status(500).json({
-      success: false,
-      message: "Failed to sync S3 security findings",
-    });
-  }
-});
+    const severity = {
+      critical: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+    };
 
+    for (const finding of openFindings) {
+      switch (finding.severity.toUpperCase()) {
+        case "CRITICAL":
+          severity.critical++;
+          break;
+        case "HIGH":
+          severity.high++;
+          break;
+        case "MEDIUM":
+          severity.medium++;
+          break;
+        case "LOW":
+          severity.low++;
+          break;
+      }
+    }
 
-router.get("/security/scan", async (_req, res) => {
-  try {
-    const findings = await scanAWSSecurity();
+    const deductions =
+      severity.critical * 20 +
+      severity.high * 10 +
+      severity.medium * 5 +
+      severity.low * 2;
 
-    res.json({
+    const score =
+      resources === 0
+        ? null
+        : Math.max(0, Math.min(100, 100 - deductions));
+
+    return res.json({
       success: true,
-      count: findings.length,
-      data: findings,
+      connected: true,
+      score,
+      resources,
+      findings: findings.length,
+      openFindings: openFindings.length,
+      severity,
+      scoringModel: "PROJECT_DEFINED",
     });
   } catch (error) {
-    console.error("AWS security scan failed:", error);
-
-    res.status(500).json({
+    console.error("Failed to calculate security score:", error);
+    return res.status(500).json({
       success: false,
-      message: "Failed to scan AWS security",
+      message: "Failed to calculate security score",
     });
   }
 });
 
-
-router.post("/security/sync", async (_req, res) => {
-  try {
-    const findings = await syncAWSSecurityFindings();
-
-    res.json({
-      success: true,
-      message: "AWS security findings synced successfully",
-      count: findings.length,
-      data: findings,
-    });
-  } catch (error) {
-    console.error("AWS security finding sync failed:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to sync AWS security findings",
-    });
-  }
-});
-
-router.post("/full-sync", async (_req, res) => {
-  try {
-    const resources = await syncAWSResources();
-    const findings = await syncAWSSecurityFindings();
-
-    const syncTime = new Date();
-
-    await prisma.syncStatus.upsert({
-      where: {
-        id: "aws",
-      },
-      update: {
-        lastSyncedAt: syncTime,
-      },
-      create: {
-        id: "aws",
-        lastSyncedAt: syncTime,
-      },
-    });
-
-    res.json({
-      success: true,
-      message: "AWS resources and security findings synced successfully",
-      data: {
-        resources,
-        findings,
-        resourceCount: resources.length,
-        findingCount: findings.length,
-        lastSyncedAt: syncTime,
-      },
-    });
-  } catch (error) {
-    console.error("AWS full sync failed:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to complete AWS full sync",
-    });
-  }
-});
-
-router.get("/sync-status", async (_req, res) => {
-  try {
-    const syncStatus = await prisma.syncStatus.findUnique({
-      where: {
-        id: "aws",
-      },
-    });
-
-    res.json({
-      success: true,
-      data: syncStatus,
-    });
-  } catch (error) {
-    console.error("AWS sync status error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch AWS sync status",
-    });
-  }
-});
-
-
+// Sync one connection, after verifying ownership.
 router.post(
   "/connections/:connectionId/sync",
-  authenticate,
-  async (req: AuthRequest, res) => {
+  async (req: AuthRequest, res: Response) => {
     try {
       if (!req.user) {
         return res.status(401).json({
@@ -316,21 +242,21 @@ router.post(
         });
       }
 
-const connectionId = req.params.connectionId;
+      const connectionId = req.params.connectionId;
 
-if (typeof connectionId !== "string") {
-  return res.status(400).json({
-    success: false,
-    message: "Invalid AWS connection ID",
-  });
-}
-      const connection =
-        await prisma.aWSConnection.findFirst({
-          where: {
-            id: connectionId,
-            userId: req.user.userId,
-          },
+      if (typeof connectionId !== "string" || !connectionId.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid AWS connection ID",
         });
+      }
+
+      const connection = await prisma.aWSConnection.findFirst({
+        where: {
+          id: connectionId,
+          userId: req.user.userId,
+        },
+      });
 
       if (!connection) {
         return res.status(404).json({
@@ -339,31 +265,97 @@ if (typeof connectionId !== "string") {
         });
       }
 
-      const resources =
-        await syncUserAWSResources(connectionId);
+      const findings =
+        await syncUserAWSSecurityFindings(connectionId);
 
-      return res.status(200).json({
+      const resources = await prisma.resource.findMany({
+        where: {
+          awsConnectionId: connectionId,
+          status: { not: "disconnected" },
+        },
+        orderBy: { updatedAt: "desc" },
+      });
+
+      const updatedConnection = await prisma.aWSConnection.findUnique({
+        where: { id: connectionId },
+        select: { lastSyncAt: true },
+      });
+
+      return res.json({
         success: true,
-        message:
-          "User AWS resources synced successfully",
-        data: resources,
-        count: resources.length,
+        message: "AWS resources and security findings synced successfully",
+        data: {
+          resources,
+          findings,
+        },
+        counts: {
+          resources: resources.length,
+          findings: findings.length,
+        },
+        lastSyncedAt: updatedConnection?.lastSyncAt ?? null,
       });
     } catch (error) {
-      console.error(
-        "User AWS resource sync failed:",
-        error
-      );
-
+      console.error("User AWS sync failed:", error);
       return res.status(500).json({
         success: false,
-        message:
-          "Failed to sync user AWS resources",
+        message: "Failed to sync AWS resources and security findings",
+      });
+    }
+  }
+);
+
+// Disconnect only a connection owned by the signed-in user.
+router.delete(
+  "/connections/:connectionId",
+  async (req: AuthRequest, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: "Authentication required",
+        });
+      }
+
+      const connectionId = req.params.connectionId;
+
+      if (typeof connectionId !== "string" || !connectionId.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid AWS connection ID",
+        });
+      }
+
+      const connection = await prisma.aWSConnection.findFirst({
+        where: {
+          id: connectionId,
+          userId: req.user.userId,
+        },
+        select: { id: true },
+      });
+
+      if (!connection) {
+        return res.status(404).json({
+          success: false,
+          message: "AWS connection not found",
+        });
+      }
+
+      await prisma.aWSConnection.delete({
+        where: { id: connection.id },
+      });
+
+      return res.json({
+        success: true,
+        message: "AWS connection disconnected successfully",
+      });
+    } catch (error) {
+      console.error("AWS disconnect failed:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to disconnect AWS account",
       });
     }
   }
 );
 
 export default router;
-
-

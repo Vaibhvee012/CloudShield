@@ -30,21 +30,25 @@ model Resource {
 }
 
 model Finding {
-  id           String   @id
-  title        String
-  severity     String
-  resourceId   String
-  resourceType String
-  region       String
-  status       String
-  category     String
-  description  String
+  id              String   @id
+  title           String
+  severity        String
+  resourceId      String
+  resourceType    String
+  region          String
+  status          String
+  category        String
+  description     String
+  awsConnectionId String?
 
-  resource     Resource           @relation(fields: [resourceId], references: [id])
-  remediation  RemediationAction?
+  resource        Resource        @relation(fields: [resourceId], references: [id])
+  awsConnection  AWSConnection?  @relation(fields: [awsConnectionId], references: [id], onDelete: Cascade)
+  remediation     RemediationAction?
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([awsConnectionId])
 }
 
 model RemediationAction {
@@ -85,6 +89,7 @@ model AWSConnection {
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   resources   Resource[]
+  findings    Finding[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

@@ -10,11 +10,12 @@ const ec2Client = new EC2Client({
 
 const AWS_REGION = process.env.AWS_REGION || "ap-south-1";
 
-export const getEC2Instances = async () => {
+export const getEC2Instances = async (
+  client: EC2Client = ec2Client
+) => {
   const command = new DescribeInstancesCommand({});
 
-  const response = await ec2Client.send(command);
-
+const response = await client.send(command);
   const instances =
     response.Reservations?.flatMap(
       (reservation) => reservation.Instances || []
@@ -40,8 +41,10 @@ export const getEC2Instances = async () => {
 /*
  * Scan EC2 security groups for unrestricted inbound access.
  */
-export const scanEC2SecurityGroups = async () => {
-  const instances = await getEC2Instances();
+export const scanEC2SecurityGroups = async (
+  client: EC2Client = ec2Client
+) => {  
+const instances = await getEC2Instances(client);
 
   const securityGroupIds = [
     ...new Set(
@@ -59,8 +62,7 @@ export const scanEC2SecurityGroups = async () => {
     GroupIds: securityGroupIds,
   });
 
-  const response = await ec2Client.send(command);
-
+const response = await client.send(command);
   const findings = [];
 
   for (const securityGroup of response.SecurityGroups || []) {

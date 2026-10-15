@@ -10,10 +10,12 @@ const rdsClient = new RDSClient({
 const AWS_REGION =
   process.env.AWS_REGION || "ap-south-1";
 
-export const getRDSInstances = async () => {
+export const getRDSInstances = async (
+  client: RDSClient = rdsClient
+) => {
   const command = new DescribeDBInstancesCommand({});
 
-  const response = await rdsClient.send(command);
+  const response = await client.send(command);
 
   return (
     response.DBInstances?.map((db) => ({
