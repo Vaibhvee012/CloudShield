@@ -1,23 +1,27 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import prisma from "../lib/prisma";
+import { AuthRequest, requireUserId } from "../middleware/auth.middleware";
+import { ownedFindings, ownedResources } from "../lib/ownership";
 
 export const getSecurityPosture = async (
-  _req: Request,
+  req: AuthRequest,
   res: Response
 ) => {
   try {
-    // Only active security findings should affect the score
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+
+    // Only this user's active findings affect the score
     const findings = await prisma.finding.findMany({
       where: {
+        ...ownedFindings(userId),
         status: "OPEN",
       },
     });
 
-    const resources = await prisma.resource.findMany();
-
-    // -------------------------
-    // Finding Severity Counts
-    // -------------------------
+    const resources = await prisma.resource.findMany({
+      where: ownedResources(userId),
+    });
 
     const critical = findings.filter(
       (finding) => finding.severity === "CRITICAL"
@@ -37,10 +41,6 @@ export const getSecurityPosture = async (
 
     const totalFindings = findings.length;
 
-    // -------------------------
-    // Security Score
-    // -------------------------
-
     const riskPoints =
       critical * 20 +
       high * 10 +
@@ -51,10 +51,6 @@ export const getSecurityPosture = async (
       0,
       Math.min(100, 100 - riskPoints)
     );
-
-    // -------------------------
-    // Resource Health
-    // -------------------------
 
     const resourcesWithFindings = new Set(
       findings.map((finding) => finding.resourceId)
@@ -77,10 +73,6 @@ export const getSecurityPosture = async (
         : Math.round(
             (healthyResources / resources.length) * 100
           );
-
-    // -------------------------
-    // Response
-    // -------------------------
 
     res.json({
       success: true,

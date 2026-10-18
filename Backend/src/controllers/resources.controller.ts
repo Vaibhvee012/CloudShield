@@ -1,14 +1,15 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import prisma from "../lib/prisma";
+import { AuthRequest, requireUserId } from "../middleware/auth.middleware";
+import { ownedResources } from "../lib/ownership";
 
-export const getResources = async (req: Request, res: Response) => {
-  console.log(
-    "Authorization header:",
-    req.headers.authorization ? "[TOKEN]" : "undefined"
-  );
-
+export const getResources = async (req: AuthRequest, res: Response) => {
   try {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+
     const resources = await prisma.resource.findMany({
+      where: ownedResources(userId),
       orderBy: {
         createdAt: "desc",
       },

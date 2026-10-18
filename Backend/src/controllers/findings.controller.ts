@@ -1,9 +1,15 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import prisma from "../lib/prisma";
+import { AuthRequest, requireUserId } from "../middleware/auth.middleware";
+import { ownedFindings } from "../lib/ownership";
 
-export const getFindings = async (_req: Request, res: Response) => {
+export const getFindings = async (req: AuthRequest, res: Response) => {
   try {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+
     const findings = await prisma.finding.findMany({
+      where: ownedFindings(userId),
       include: {
         resource: true,
       },

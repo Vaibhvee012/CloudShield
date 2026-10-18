@@ -1,13 +1,19 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import prisma from "../lib/prisma";
+import { AuthRequest, requireUserId } from "../middleware/auth.middleware";
+import { ownedRemediations } from "../lib/ownership";
 
 export const getRemediationActions = async (
-  _req: Request,
+  req: AuthRequest,
   res: Response
 ) => {
   try {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+
     const remediationActions =
       await prisma.remediationAction.findMany({
+        where: ownedRemediations(userId),
         orderBy: {
           createdAt: "desc",
         },
