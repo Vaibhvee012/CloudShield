@@ -20,6 +20,7 @@ import {
 
 const MAX_PRIORITIZED_FINDINGS = 25;
 const MAX_FINDINGS_SCANNED = 200;
+
 const ADVISORY_NOTICE =
   "Advisory only. CloudShield does not change your AWS resources. Review suggestions before applying them.";
 
@@ -89,7 +90,6 @@ export const explainFinding = async (
   try {
     const userId = requireUserId(req, res);
     if (!userId) return;
-    
 
     const id = parseResourceId(req.params.id);
 
@@ -168,6 +168,8 @@ Rules:
       data: {
         findingId: finding.id,
         explanation: response,
+        advisory: true,
+        notice: ADVISORY_NOTICE,
       },
     });
   } catch (error) {
@@ -383,6 +385,8 @@ Rules:
       data: {
         findingId: finding.id,
         remediation: response,
+        advisory: true,
+        notice: ADVISORY_NOTICE,
       },
     });
   } catch (error) {
