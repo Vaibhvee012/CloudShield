@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import {
   buildSecurityContext,
 } from "../services/aiContextService";
@@ -8,6 +8,16 @@ import {
 } from "../services/geminiService";
 import prisma from "../lib/prisma";
 import { AuthRequest, requireUserId } from "../middleware/auth.middleware";
+import { ownedFindings } from "../lib/ownership";
+import {
+  UNTRUSTED_DATA_RULE,
+  parseResourceId,
+  sanitizeText,
+  severityRank,
+} from "../lib/promptSafety";
+
+const MAX_PRIORITIZED_FINDINGS = 25;
+const MAX_FINDINGS_SCANNED = 200;
 
 export const chatWithAI = async (
   req: AuthRequest,
@@ -68,22 +78,31 @@ export const chatWithAI = async (
 };
 
 export const explainFinding = async (
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) => {
   try {
-    const id = String(req.params.id || "").trim();
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+
+    const id = parseResourceId(req.params.id);
 
     if (!id) {
       return res.status(400).json({
         success: false,
-        message: "Finding ID is required",
+        message: "A valid finding ID is required",
       });
     }
 
-    const finding = await prisma.finding.findUnique({
+    // Ownership is enforced in the query itself.
+    const finding = await prisma.finding.findFirst({
       where: {
         id,
+        ...ownedFindings(userId),
+      },
+      include: {
+        resource: true,
+        remediation: true,
       },
     });
 
@@ -94,39 +113,33 @@ export const explainFinding = async (
       });
     }
 
-    const resource = await prisma.resource.findUnique({
-      where: {
-        id: finding.resourceId,
-      },
-    });
-
-    const remediation = await prisma.remediationAction.findUnique({
-      where: {
-        findingId: finding.id,
-      },
-    });
+    const remediation = finding.remediation;
 
     const prompt = `
 You are CloudShield AI, a cloud security expert.
 
 Explain the following AWS security finding to a CloudShield user.
 
+${UNTRUSTED_DATA_RULE}
+
+<data>
 Finding:
-- Title: ${finding.title}
-- Severity: ${finding.severity}
-- Category: ${finding.category}
-- Description: ${finding.description}
-- Resource: ${resource?.name ?? "Unknown resource"}
-- Resource Type: ${finding.resourceType}
-- Region: ${finding.region}
-- Status: ${finding.status}
+- Title: ${sanitizeText(finding.title, 200)}
+- Severity: ${sanitizeText(finding.severity, 20)}
+- Category: ${sanitizeText(finding.category, 100)}
+- Description: ${sanitizeText(finding.description, 800)}
+- Resource: ${sanitizeText(finding.resource?.name ?? "Unknown resource", 200)}
+- Resource Type: ${sanitizeText(finding.resourceType, 50)}
+- Region: ${sanitizeText(finding.region, 50)}
+- Status: ${sanitizeText(finding.status, 30)}
 
 Existing remediation:
 ${
   remediation
-    ? `${remediation.title}: ${remediation.action}`
+    ? `${sanitizeText(remediation.title, 200)}: ${sanitizeText(remediation.action, 800)}`
     : "No remediation action is currently available."
 }
+</data>
 
 Explain:
 1. Why this finding is a security risk.
@@ -165,30 +178,46 @@ Rules:
 };
 
 export const prioritizeRisks = async (
-  _req: Request,
+  req: AuthRequest,
   res: Response
 ) => {
   try {
-    const findings = await prisma.finding.findMany({
-      where: {
-        status: {
-          not: "RESOLVED",
-        },
-      },
-      orderBy: {
-        updatedAt: "desc",
-      },
-    });
+    const userId = requireUserId(req, res);
+    if (!userId) return;
 
-    if (findings.length === 0) {
+    const openWhere = {
+      ...ownedFindings(userId),
+      status: { not: "RESOLVED" },
+    };
+
+    const [totalOpen, scannedFindings] = await Promise.all([
+      prisma.finding.count({ where: openWhere }),
+      prisma.finding.findMany({
+        where: openWhere,
+        orderBy: { updatedAt: "desc" },
+        take: MAX_FINDINGS_SCANNED,
+      }),
+    ]);
+
+    if (totalOpen === 0) {
       return res.status(200).json({
         success: true,
         data: {
           prioritization:
             "There are currently no open security findings to prioritize.",
+          totalOpen: 0,
+          analyzed: 0,
         },
       });
     }
+
+    // Most severe first, then cap what is sent to the model.
+    const findings = [...scannedFindings]
+      .sort(
+        (a, b) =>
+          severityRank(a.severity) - severityRank(b.severity)
+      )
+      .slice(0, MAX_PRIORITIZED_FINDINGS);
 
     const prompt = `
 You are CloudShield AI, a cloud security risk prioritization engine.
@@ -196,22 +225,28 @@ You are CloudShield AI, a cloud security risk prioritization engine.
 Analyze the following active AWS security findings and determine what the
 CloudShield user should fix first.
 
-ACTIVE FINDINGS:
+${UNTRUSTED_DATA_RULE}
+
+There are ${totalOpen} open findings in total. The ${findings.length} most
+severe are listed below.
+
+<data>
 ${JSON.stringify(
   findings.map((finding) => ({
     id: finding.id,
-    title: finding.title,
-    severity: finding.severity,
-    resourceId: finding.resourceId,
-    resourceType: finding.resourceType,
-    region: finding.region,
-    category: finding.category,
-    status: finding.status,
-    description: finding.description,
+    title: sanitizeText(finding.title, 200),
+    severity: sanitizeText(finding.severity, 20),
+    resourceId: sanitizeText(finding.resourceId, 200),
+    resourceType: sanitizeText(finding.resourceType, 50),
+    region: sanitizeText(finding.region, 50),
+    category: sanitizeText(finding.category, 100),
+    status: sanitizeText(finding.status, 30),
+    description: sanitizeText(finding.description, 500),
   })),
   null,
   2
 )}
+</data>
 
 For each prioritized finding provide:
 1. Priority rank.
@@ -237,6 +272,8 @@ Prioritization rules:
       success: true,
       data: {
         prioritization: response,
+        totalOpen,
+        analyzed: findings.length,
       },
     });
   } catch (error) {
@@ -253,22 +290,31 @@ Prioritization rules:
 };
 
 export const suggestRemediation = async (
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) => {
   try {
-    const id = String(req.params.id || "").trim();
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+
+    const id = parseResourceId(req.params.id);
 
     if (!id) {
       return res.status(400).json({
         success: false,
-        message: "Finding ID is required",
+        message: "A valid finding ID is required",
       });
     }
 
-    const finding = await prisma.finding.findUnique({
+    // Ownership is enforced in the query itself.
+    const finding = await prisma.finding.findFirst({
       where: {
         id,
+        ...ownedFindings(userId),
+      },
+      include: {
+        resource: true,
+        remediation: true,
       },
     });
 
@@ -279,40 +325,34 @@ export const suggestRemediation = async (
       });
     }
 
-    const resource = await prisma.resource.findUnique({
-      where: {
-        id: finding.resourceId,
-      },
-    });
-
-    const existingRemediation =
-      await prisma.remediationAction.findUnique({
-        where: {
-          findingId: finding.id,
-        },
-      });
+    const existingRemediation = finding.remediation;
 
     const prompt = `
 You are CloudShield AI, an AWS cloud security remediation advisor.
 
 Create a practical remediation plan for the following security finding.
+This is advice only. CloudShield does not change AWS resources.
 
+${UNTRUSTED_DATA_RULE}
+
+<data>
 Finding:
-- Title: ${finding.title}
-- Severity: ${finding.severity}
-- Category: ${finding.category}
-- Description: ${finding.description}
-- Resource: ${resource?.name ?? "Unknown resource"}
-- Resource Type: ${finding.resourceType}
-- Region: ${finding.region}
-- Status: ${finding.status}
+- Title: ${sanitizeText(finding.title, 200)}
+- Severity: ${sanitizeText(finding.severity, 20)}
+- Category: ${sanitizeText(finding.category, 100)}
+- Description: ${sanitizeText(finding.description, 800)}
+- Resource: ${sanitizeText(finding.resource?.name ?? "Unknown resource", 200)}
+- Resource Type: ${sanitizeText(finding.resourceType, 50)}
+- Region: ${sanitizeText(finding.region, 50)}
+- Status: ${sanitizeText(finding.status, 30)}
 
 Existing remediation:
 ${
   existingRemediation
-    ? `${existingRemediation.title}: ${existingRemediation.action}`
+    ? `${sanitizeText(existingRemediation.title, 200)}: ${sanitizeText(existingRemediation.action, 800)}`
     : "No existing remediation is available."
 }
+</data>
 
 Provide:
 
