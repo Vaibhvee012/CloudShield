@@ -1,3 +1,4 @@
+
 import { Response } from "express";
 import { z } from "zod";
 import prisma from "../lib/prisma";
@@ -5,18 +6,15 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { assumeAWSRole } from "../services/awsConnectionService";
 
 const connectAWSSchema = z.object({
-  accountId: z
-    .string()
-    .regex(/^\d{12}$/, "AWS Account ID must be exactly 12 digits"),
-  roleArn: z
-    .string()
-    .regex(
-      /^arn:aws:iam::\d{12}:role\/[\w+=,.@-]+$/,
-      "Invalid IAM Role ARN"
-    ),
-  region: z
-    .string()
-    .min(1, "AWS region is required"),
+  accountId: z.string().regex(
+    /^\d{12}$/,
+    "AWS Account ID must be exactly 12 digits"
+  ),
+  roleArn: z.string().regex(
+    /^arn:aws:iam::\d{12}:role\/[\w+=,.@-]+$/,
+    "Invalid IAM Role ARN"
+  ),
+  region: z.string().trim().min(1, "AWS region is required"),
 });
 
 export const connectAWS = async (
@@ -24,7 +22,7 @@ export const connectAWS = async (
   res: Response
 ) => {
   try {
-    if (!req.user) {
+    if (!req.user?.userId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
@@ -43,10 +41,8 @@ export const connectAWS = async (
 
     const { accountId, roleArn, region } = validation.data;
 
-    const identity = await assumeAWSRole({
-      roleArn,
-      region,
-    });
+    // Verify AWS access before saving the connection.
+    const identity = await assumeAWSRole({ roleArn, region });
 
     if (!identity.accountId) {
       return res.status(502).json({
@@ -74,7 +70,6 @@ export const connectAWS = async (
         roleArn,
         region,
         status: "CONNECTED",
-        lastSyncAt: null,
       },
       create: {
         userId: req.user.userId,
@@ -91,15 +86,15 @@ export const connectAWS = async (
       data: {
         id: connection.id,
         accountId: connection.accountId,
-        roleArn: connection.roleArn,
         region: connection.region,
         status: connection.status,
+        lastSyncAt: connection.lastSyncAt,
       },
     });
   } catch (error) {
     console.error("AWS connection failed:", error);
 
-    return res.status(400).json({
+    return res.status(500).json({
       success: false,
       message:
         "Unable to connect to AWS. Verify the IAM Role ARN and its trust permissions.",

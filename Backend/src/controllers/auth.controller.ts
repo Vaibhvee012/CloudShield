@@ -1,13 +1,19 @@
+
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
-import prisma from "../lib/prisma";
 import jwt from "jsonwebtoken";
+import prisma from "../lib/prisma";
+
+const getJWTSecret = (): string | null => {
+  const secret = process.env.JWT_SECRET;
+  return secret?.trim() ? secret : null;
+};
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const name = String(req.body.name || "").trim();
-    const email = String(req.body.email || "").trim().toLowerCase();
-    const password = String(req.body.password || "");
+    const name = String(req.body.name ?? "").trim();
+    const email = String(req.body.email ?? "").trim().toLowerCase();
+    const password = String(req.body.password ?? "");
 
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -23,9 +29,10 @@ export const register = async (req: Request, res: Response) => {
       });
     }
 
-    if (!process.env.JWT_SECRET) {
-      console.error("JWT_SECRET is not configured");
+    const secret = getJWTSecret();
 
+    if (!secret) {
+      console.error("JWT_SECRET is not configured");
       return res.status(500).json({
         success: false,
         message: "Server authentication configuration is missing",
@@ -81,8 +88,8 @@ export const register = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const email = String(req.body.email || "").trim().toLowerCase();
-    const password = String(req.body.password || "");
+    const email = String(req.body.email ?? "").trim().toLowerCase();
+    const password = String(req.body.password ?? "");
 
     if (!email || !password) {
       return res.status(400).json({
@@ -91,9 +98,10 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    if (!process.env.JWT_SECRET) {
-      console.error("JWT_SECRET is not configured");
+    const secret = getJWTSecret();
 
+    if (!secret) {
+      console.error("JWT_SECRET is not configured");
       return res.status(500).json({
         success: false,
         message: "Server authentication configuration is missing",
@@ -116,10 +124,7 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    const passwordMatch = await bcrypt.compare(
-      password,
-      user.password
-    );
+    const passwordMatch = await bcrypt.compare(password, user.password);
 
     if (!passwordMatch) {
       return res.status(401).json({
@@ -133,10 +138,8 @@ export const login = async (req: Request, res: Response) => {
         userId: user.id,
         role: user.role,
       },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "1d",
-      }
+      secret,
+      { expiresIn: "1d" }
     );
 
     return res.status(200).json({

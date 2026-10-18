@@ -1,32 +1,33 @@
 import prisma from "../lib/prisma";
 
-export const buildSecurityContext = async () => {
+import {
+  ownedFindings,
+  ownedRemediations,
+  ownedResources,
+} from "../lib/ownership";
+
+export const buildSecurityContext = async (userId: string) => {
   const [resources, findings, remediationActions] = await Promise.all([
     prisma.resource.findMany({
-      orderBy: {
-        updatedAt: "desc",
+      where: {
+        ...ownedResources(userId),
+        status: { not: "disconnected" },
       },
+      orderBy: { updatedAt: "desc" },
     }),
 
     prisma.finding.findMany({
       where: {
-        status: {
-          not: "RESOLVED",
-        },
+        ...ownedFindings(userId),
+        status: { not: "RESOLVED" },
       },
-      include: {
-        resource: true,
-        remediation: true,
-      },
-      orderBy: {
-        severity: "asc",
-      },
+      include: { resource: true, remediation: true },
+      orderBy: { severity: "asc" },
     }),
 
     prisma.remediationAction.findMany({
-      orderBy: {
-        updatedAt: "desc",
-      },
+      where: ownedRemediations(userId),
+      orderBy: { updatedAt: "desc" },
     }),
   ]);
 
@@ -97,32 +98,5 @@ export const buildSecurityContext = async () => {
       remediationStatus: finding.remediation?.status ?? "NOT_AVAILABLE",
       remediationTitle: finding.remediation?.title,
     })),
-  };
-};
-
-export const buildAIContextPrompt = async (question: string) => {
-  const securityContext = await buildSecurityContext();
-
-  return {
-    securityContext,
-    prompt: `
-You are CloudShield AI, a cloud security assistant.
-
-Analyze the user's question using the CloudShield security data provided below.
-
-Rules:
-- Use only the provided CloudShield data.
-- Do not invent findings or resources.
-- Prioritize critical and high severity issues.
-- Give practical recommendations.
-- Do not claim to have modified AWS resources.
-- If the information is unavailable, say so clearly.
-
-CloudShield Security Data:
-${JSON.stringify(securityContext, null, 2)}
-
-User Question:
-${question}
-`,
   };
 };

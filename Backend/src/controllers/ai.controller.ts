@@ -7,12 +7,16 @@ import {
   generateAIResponse,
 } from "../services/geminiService";
 import prisma from "../lib/prisma";
+import { AuthRequest, requireUserId } from "../middleware/auth.middleware";
 
 export const chatWithAI = async (
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) => {
   try {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+
     const { question } = req.body;
 
     if (!question || typeof question !== "string") {
@@ -38,7 +42,7 @@ export const chatWithAI = async (
       });
     }
 
-    const securityContext = await buildSecurityContext();
+    const securityContext = await buildSecurityContext(userId);
 
     const prompt = buildCloudShieldPrompt(
       trimmedQuestion,
@@ -351,11 +355,14 @@ Rules:
 };
 
 export const getDashboardInsight = async (
-  _req: Request,
+  req: AuthRequest,
   res: Response
 ) => {
   try {
-    const securityContext = await buildSecurityContext();
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+
+    const securityContext = await buildSecurityContext(userId);
 
     const prompt = `
 You are CloudShield AI, an AWS cloud security analyst.

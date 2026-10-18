@@ -65,3 +65,20 @@ export const authorize = (...allowedRoles: string[]) => {
     next();
   };
 };
+
+export const requireUserId = (
+  req: AuthRequest,
+  res: Response
+): string | null => {
+  const userId = req.user?.userId;
+
+  if (!userId) {
+    res.status(401).json({
+      success: false,
+      message: "Authentication required",
+    });
+    return null;
+  }
+
+  return userId;
+};

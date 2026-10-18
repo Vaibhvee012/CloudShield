@@ -358,4 +358,127 @@ router.delete(
   }
 );
 
+
+
+// Get the latest sync time for the signed-in user's AWS connections.
+router.get("/sync-status", async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const latestConnection = await prisma.aWSConnection.findFirst({
+      where: {
+        userId: req.user.userId,
+        lastSyncAt: { not: null },
+      },
+      select: {
+        lastSyncAt: true,
+      },
+      orderBy: {
+        lastSyncAt: "desc",
+      },
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        lastSyncedAt: latestConnection?.lastSyncAt ?? null,
+      },
+    });
+  } catch (error) {
+    console.error("AWS sync status fetch failed:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch AWS sync status",
+    });
+  }
+});
+
+// Sync all AWS connections belonging to the signed-in user.
+router.post("/full-sync", async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const connections = await prisma.aWSConnection.findMany({
+      where: {
+        userId: req.user.userId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (connections.length === 0) {
+      return res.json({
+        success: true,
+        message: "No AWS connections available to sync",
+        data: {
+          lastSyncedAt: null,
+          connectionsSynced: 0,
+          resourcesSynced: 0,
+          findingsSynced: 0,
+        },
+      });
+    }
+
+    let resourcesSynced = 0;
+    let findingsSynced = 0;
+
+    // Sync sequentially to avoid unnecessary AWS API bursts.
+    for (const connection of connections) {
+      const findings = await syncUserAWSSecurityFindings(connection.id);
+      const resources = await prisma.resource.count({
+        where: {
+          awsConnectionId: connection.id,
+          status: { not: "disconnected" },
+        },
+      });
+
+      resourcesSynced += resources;
+      findingsSynced += findings.length;
+    }
+
+    const latestConnection = await prisma.aWSConnection.findFirst({
+      where: {
+        userId: req.user.userId,
+        lastSyncAt: { not: null },
+      },
+      select: {
+        lastSyncAt: true,
+      },
+      orderBy: {
+        lastSyncAt: "desc",
+      },
+    });
+
+    return res.json({
+      success: true,
+      message: "AWS synchronization completed successfully",
+      data: {
+        lastSyncedAt: latestConnection?.lastSyncAt ?? null,
+        connectionsSynced: connections.length,
+        resourcesSynced,
+        findingsSynced,
+      },
+    });
+  } catch (error) {
+    console.error("Full AWS sync failed:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to sync AWS resources and security findings",
+    });
+  }
+});
+
 export default router;

@@ -1,6 +1,7 @@
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
+
 const getAuthHeaders = (): HeadersInit => {
   const token = localStorage.getItem("cloudshield_token");
 
@@ -138,3 +139,31 @@ export const getDashboardAIInsight = async () => {
 
   return response.json();
 };
+
+
+
+export const connectAWS = async (connection: {
+  accountId: string;
+  roleArn: string;
+  region: string;
+}) => {
+  const response = await fetch(`${API_BASE_URL}/aws/connect`, {
+    method: "POST",
+    headers: {
+      ...getAuthHeaders(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(connection),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      data?.message || "Failed to connect AWS account"
+    );
+  }
+
+  return data;
+};
+
