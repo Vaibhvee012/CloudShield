@@ -7,33 +7,22 @@ import {
   suggestRemediation,
 } from "../controllers/ai.controller";
 import { authenticate } from "../middleware/auth.middleware";
+import { aiRateLimiter } from "../middleware/aiRateLimit";
 
 const router = Router();
 
-router.post("/chat", authenticate, chatWithAI);
+// Order matters: authenticate first so the limiter can key on the user.
+router.use(authenticate);
+router.use(aiRateLimiter);
 
-router.post(
-  "/findings/:id/explain",
-  authenticate,
-  explainFinding
-);
+router.post("/chat", chatWithAI);
 
-router.post(
-  "/risks/prioritize",
-  authenticate,
-  prioritizeRisks
-);
+router.post("/findings/:id/explain", explainFinding);
 
-router.post(
-  "/findings/:id/remediation",
-  authenticate,
-  suggestRemediation
-);
+router.post("/risks/prioritize", prioritizeRisks);
 
-router.get(
-  "/dashboard/insight",
-  authenticate,
-  getDashboardInsight
-);
+router.post("/findings/:id/remediation", suggestRemediation);
+
+router.get("/dashboard/insight", getDashboardInsight);
 
 export default router;

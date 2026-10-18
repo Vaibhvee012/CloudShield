@@ -2,13 +2,15 @@ import { Response } from "express";
 import {
   buildSecurityContext,
 } from "../services/aiContextService";
+import { generateAIResponse } from "../services/geminiService";
 import {
-  buildCloudShieldPrompt,
-  generateAIResponse,
-} from "../services/geminiService";
+  buildChatPrompt,
+  buildDashboardPrompt,
+} from "../services/aiPrompts";
 import prisma from "../lib/prisma";
 import { AuthRequest, requireUserId } from "../middleware/auth.middleware";
 import { ownedFindings } from "../lib/ownership";
+import { sendAIError } from "../lib/aiErrors";
 import {
   UNTRUSTED_DATA_RULE,
   parseResourceId,
@@ -54,7 +56,7 @@ export const chatWithAI = async (
 
     const securityContext = await buildSecurityContext(userId);
 
-    const prompt = buildCloudShieldPrompt(
+    const prompt = buildChatPrompt(
       trimmedQuestion,
       securityContext
     );
@@ -68,12 +70,13 @@ export const chatWithAI = async (
       },
     });
   } catch (error) {
-    console.error("CloudShield AI error:", error);
+    console.error("CloudShield AI chat error:", error);
 
-    return res.status(500).json({
-      success: false,
-      message: "Failed to generate AI response",
-    });
+    return sendAIError(
+      res,
+      error,
+      "Failed to generate AI response"
+    );
   }
 };
 
@@ -170,10 +173,7 @@ Rules:
       error
     );
 
-    return res.status(500).json({
-      success: false,
-      message: "Failed to explain finding",
-    });
+    return sendAIError(res, error, "Failed to explain finding");
   }
 };
 
@@ -282,10 +282,11 @@ Prioritization rules:
       error
     );
 
-    return res.status(500).json({
-      success: false,
-      message: "Failed to prioritize security risks",
-    });
+    return sendAIError(
+      res,
+      error,
+      "Failed to prioritize security risks"
+    );
   }
 };
 
@@ -387,10 +388,11 @@ Rules:
       error
     );
 
-    return res.status(500).json({
-      success: false,
-      message: "Failed to generate remediation suggestion",
-    });
+    return sendAIError(
+      res,
+      error,
+      "Failed to generate remediation suggestion"
+    );
   }
 };
 
@@ -404,30 +406,7 @@ export const getDashboardInsight = async (
 
     const securityContext = await buildSecurityContext(userId);
 
-    const prompt = `
-You are CloudShield AI, an AWS cloud security analyst.
-
-Generate one concise security insight for the CloudShield dashboard based
-ONLY on the security data provided below.
-
-CloudShield Security Context:
-${JSON.stringify(securityContext, null, 2)}
-
-Your response must contain:
-
-1. A short insight headline.
-2. The most important security issue right now.
-3. Why it matters.
-4. One recommended action.
-
-Rules:
-- Prioritize CRITICAL and HIGH findings.
-- Use actual findings and resources from the provided context.
-- Do not invent information.
-- Do not claim that any AWS changes have been performed.
-- Keep the response concise enough for a dashboard card.
-- Do not use markdown tables.
-`;
+    const prompt = buildDashboardPrompt(securityContext);
 
     const response = await generateAIResponse(prompt);
 
@@ -443,9 +422,10 @@ Rules:
       error
     );
 
-    return res.status(500).json({
-      success: false,
-      message: "Failed to generate dashboard AI insight",
-    });
+    return sendAIError(
+      res,
+      error,
+      "Failed to generate dashboard AI insight"
+    );
   }
 };

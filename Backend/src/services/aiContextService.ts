@@ -5,15 +5,32 @@ import {
   ownedRemediations,
   ownedResources,
 } from "../lib/ownership";
+import { sanitizeText, severityRank } from "../lib/promptSafety";
+
+const MAX_CONTEXT_FINDINGS = 25;
+const MAX_CONTEXT_RESOURCES = 50;
 
 export const buildSecurityContext = async (userId: string) => {
-  const [resources, findings, remediationActions] = await Promise.all([
+  const [
+    totalResources,
+    resources,
+    findings,
+    pendingRemediations,
+  ] = await Promise.all([
+    prisma.resource.count({
+      where: {
+        ...ownedResources(userId),
+        status: { not: "disconnected" },
+      },
+    }),
+
     prisma.resource.findMany({
       where: {
         ...ownedResources(userId),
         status: { not: "disconnected" },
       },
       orderBy: { updatedAt: "desc" },
+      take: MAX_CONTEXT_RESOURCES,
     }),
 
     prisma.finding.findMany({
@@ -21,31 +38,29 @@ export const buildSecurityContext = async (userId: string) => {
         ...ownedFindings(userId),
         status: { not: "RESOLVED" },
       },
-      include: { resource: true, remediation: true },
-      orderBy: { severity: "asc" },
+      include: {
+        resource: { select: { name: true } },
+        remediation: { select: { status: true, title: true } },
+      },
     }),
 
-    prisma.remediationAction.findMany({
-      where: ownedRemediations(userId),
-      orderBy: { updatedAt: "desc" },
+    prisma.remediationAction.count({
+      where: {
+        ...ownedRemediations(userId),
+        status: { not: "COMPLETED" },
+      },
     }),
   ]);
 
-  const critical = findings.filter(
-    (finding) => finding.severity.toUpperCase() === "CRITICAL"
-  ).length;
+  const countBySeverity = (severity: string) =>
+    findings.filter(
+      (finding) => finding.severity.toUpperCase() === severity
+    ).length;
 
-  const high = findings.filter(
-    (finding) => finding.severity.toUpperCase() === "HIGH"
-  ).length;
-
-  const medium = findings.filter(
-    (finding) => finding.severity.toUpperCase() === "MEDIUM"
-  ).length;
-
-  const low = findings.filter(
-    (finding) => finding.severity.toUpperCase() === "LOW"
-  ).length;
+  const critical = countBySeverity("CRITICAL");
+  const high = countBySeverity("HIGH");
+  const medium = countBySeverity("MEDIUM");
+  const low = countBySeverity("LOW");
 
   const riskPoints =
     critical * 20 +
@@ -58,45 +73,56 @@ export const buildSecurityContext = async (userId: string) => {
     Math.min(100, 100 - riskPoints)
   );
 
+  // Most severe first, then cap what is sent to the model.
+  const topFindings = [...findings]
+    .sort(
+      (a, b) =>
+        severityRank(a.severity) - severityRank(b.severity)
+    )
+    .slice(0, MAX_CONTEXT_FINDINGS);
+
   return {
     securityScore,
 
     summary: {
-      totalResources: resources.length,
+      totalResources,
       totalOpenFindings: findings.length,
       critical,
       high,
       medium,
       low,
-      pendingRemediations: remediationActions.filter(
-        (action) => action.status !== "COMPLETED"
-      ).length,
+      pendingRemediations,
+      findingsListed: topFindings.length,
+      resourcesListed: resources.length,
     },
 
     resources: resources.map((resource) => ({
-      id: resource.id,
-      name: resource.name,
-      type: resource.type,
-      region: resource.region,
-      status: resource.status,
-      environment: resource.environment,
-      riskLevel: resource.riskLevel,
-      source: resource.source,
+      id: sanitizeText(resource.id, 200),
+      name: sanitizeText(resource.name, 200),
+      type: sanitizeText(resource.type, 50),
+      region: sanitizeText(resource.region, 50),
+      status: sanitizeText(resource.status, 30),
+      environment: sanitizeText(resource.environment, 50),
+      riskLevel: sanitizeText(resource.riskLevel, 20),
+      source: sanitizeText(resource.source, 20),
     })),
 
-    findings: findings.map((finding) => ({
-      id: finding.id,
-      title: finding.title,
-      severity: finding.severity,
-      resourceId: finding.resourceId,
-      resourceName: finding.resource?.name,
-      resourceType: finding.resourceType,
-      region: finding.region,
-      category: finding.category,
-      status: finding.status,
-      description: finding.description,
-      remediationStatus: finding.remediation?.status ?? "NOT_AVAILABLE",
-      remediationTitle: finding.remediation?.title,
+    findings: topFindings.map((finding) => ({
+      id: sanitizeText(finding.id, 200),
+      title: sanitizeText(finding.title, 200),
+      severity: sanitizeText(finding.severity, 20),
+      resourceId: sanitizeText(finding.resourceId, 200),
+      resourceName: sanitizeText(finding.resource?.name, 200),
+      resourceType: sanitizeText(finding.resourceType, 50),
+      region: sanitizeText(finding.region, 50),
+      category: sanitizeText(finding.category, 100),
+      status: sanitizeText(finding.status, 30),
+      description: sanitizeText(finding.description, 500),
+      remediationStatus: sanitizeText(
+        finding.remediation?.status ?? "NOT_AVAILABLE",
+        30
+      ),
+      remediationTitle: sanitizeText(finding.remediation?.title, 200),
     })),
   };
 };
