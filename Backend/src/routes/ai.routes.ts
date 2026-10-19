@@ -2,10 +2,10 @@ import { Router } from "express";
 import {
   chatWithAI,
   explainFinding,
-  getDashboardInsight,
   prioritizeRisks,
   suggestRemediation,
 } from "../controllers/ai.controller";
+import { getDashboardInsight } from "../controllers/dashboardInsight.controller";
 import { authenticate } from "../middleware/auth.middleware";
 import { aiRateLimiter } from "../middleware/aiRateLimit";
 

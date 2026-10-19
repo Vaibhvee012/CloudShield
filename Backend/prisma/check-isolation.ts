@@ -90,6 +90,14 @@ async function main() {
     const prioritize = await call("POST", "/ai/risks/prioritize", token);
     record("prioritize returns 200 with no findings", prioritize.status === 200, `(status ${prioritize.status})`);
 
+        // 3b. Dashboard insight for a user with no connection: instant, no Gemini.
+    const insight = await call("GET", "/ai/dashboard/insight", token);
+    record(
+      "dashboard insight says NO_CONNECTION for new user",
+      insight.status === 200 && insight.json?.data?.state === "NO_CONNECTION",
+      `(status ${insight.status}, state ${insight.json?.data?.state})`
+    );
+
     // 4. Someone else's finding must be a 404.
     const someoneElses = await prisma.finding.findFirst({ select: { id: true } });
     if (!someoneElses) {
