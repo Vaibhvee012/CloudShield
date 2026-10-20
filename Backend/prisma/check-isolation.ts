@@ -4,6 +4,18 @@ import { PrismaClient } from "../src/generated/prisma/client";
 
 const BASE = process.env.CHECK_API_URL || "http://localhost:5000/api";
 
+// Safety: this script creates and deletes users. Local databases only.
+const dbHost = new URL(process.env.DATABASE_URL!).hostname;
+if (
+  !["localhost", "127.0.0.1"].includes(dbHost) &&
+  process.env.ALLOW_REMOTE_CHECK !== "1"
+) {
+  console.error(
+    `REFUSING TO RUN: DATABASE_URL host is "${dbHost}", not local. Set ALLOW_REMOTE_CHECK=1 to override.`
+  );
+  process.exit(1);
+}
+
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL!,
 });
@@ -37,8 +49,158 @@ const call = async (
   return { status: response.status, json };
 };
 
+const createdEmails: string[] = [];
+
+const createUser = async (label: string) => {
+  const email = `isotest-${label}-${Date.now()}@example.com`.toLowerCase();
+  const password = `TestPassw0rd!${Date.now()}`;
+  createdEmails.push(email);
+
+  const register = await call("POST", "/auth/register", undefined, {
+    name: `Isolation ${label}`,
+    email,
+    password,
+  });
+  if (register.status >= 400) {
+    throw new Error(`Register failed for ${label}: ${register.status}`);
+  }
+
+  const login = await call("POST", "/auth/login", undefined, {
+    email,
+    password,
+  });
+  const token: string | undefined = login.json?.token ?? login.json?.data?.token;
+  if (!token) throw new Error(`No token for ${label}`);
+
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) throw new Error(`User row missing for ${label}`);
+
+  return { email, token, userId: user.id };
+};
+
+type FindingSeed = {
+  suffix: string;
+  severity: string;
+  withRemediation: boolean;
+};
+
+const seedAccount = async (
+  tag: string,
+  userId: string,
+  accountId: string,
+  resourceNames: string[],
+  findings: FindingSeed[]
+) => {
+  const connection = await prisma.aWSConnection.create({
+    data: {
+      userId,
+      accountId,
+      roleArn: `arn:aws:iam::${accountId}:role/isotest-fake`,
+      region: "us-east-1",
+      status: "CONNECTED",
+    },
+  });
+
+  const resourceIds: string[] = [];
+
+  for (const name of resourceNames) {
+    const id = `${tag}-res-${name}`;
+    resourceIds.push(id);
+    await prisma.resource.create({
+      data: {
+        id,
+        name,
+        type: "S3",
+        region: "us-east-1",
+        status: "active",
+        environment: "test",
+        riskLevel: "LOW",
+        source: "AWS",
+        awsConnectionId: connection.id,
+      },
+    });
+  }
+
+  const findingIds: string[] = [];
+
+  for (const f of findings) {
+    const id = `${tag}-finding-${f.suffix}`;
+    findingIds.push(id);
+    await prisma.finding.create({
+      data: {
+        id,
+        title: `Test finding ${f.suffix}`,
+        severity: f.severity,
+        resourceId: resourceIds[0],
+        resourceType: "S3",
+        region: "us-east-1",
+        status: "OPEN",
+        category: "Test",
+        description: "Isolation test finding",
+        awsConnectionId: connection.id,
+      },
+    });
+
+    if (f.withRemediation) {
+      await prisma.remediationAction.create({
+        data: {
+          id: `${tag}-remediation-${f.suffix}`,
+          findingId: id,
+          title: "Test remediation",
+          action: "Test action",
+          status: "PENDING",
+          riskReduction: "LOW",
+        },
+      });
+    }
+  }
+
+  return { connectionId: connection.id, resourceIds, findingIds };
+};
+
+const idsOf = (json: any): string[] =>
+  Array.isArray(json?.data) ? json.data.map((row: any) => String(row.id)) : [];
+
+const checkOwnData = async (
+  label: string,
+  tag: string,
+  token: string,
+  expected: { resources: number; findings: number; remediations: number; score: number }
+) => {
+  const endpoints: [string, number][] = [
+    ["/resources", expected.resources],
+    ["/findings", expected.findings],
+    ["/remediation", expected.remediations],
+    ["/aws/resources", expected.resources],
+    ["/aws/findings", expected.findings],
+    ["/aws/connections", 1],
+  ];
+
+  for (const [path, count] of endpoints) {
+    const r = await call("GET", path, token);
+    const ids = idsOf(r.json);
+    const onlyOwn =
+      path === "/aws/connections" || ids.every((id) => id.startsWith(tag));
+    record(
+      `${label}: GET ${path} returns only own rows`,
+      r.status === 200 && ids.length === count && onlyOwn,
+      `(status ${r.status}, rows ${ids.length}, expected ${count}, onlyOwn ${onlyOwn})`
+    );
+  }
+
+  const security = await call("GET", "/security", token);
+  record(
+    `${label}: /security counts only own findings`,
+    security.status === 200 &&
+      security.json?.data?.totalFindings === expected.findings &&
+      security.json?.data?.securityScore === expected.score,
+    `(findings ${security.json?.data?.totalFindings}, score ${security.json?.data?.securityScore}, expected ${expected.findings}/${expected.score})`
+  );
+};
+
 async function main() {
   console.log(`API: ${BASE}`);
+  console.log(`Database host: ${dbHost}`);
 
   const health = await call("GET", "/health").catch(() => null);
   if (!health) {
@@ -47,84 +209,153 @@ async function main() {
     return;
   }
 
-  const stamp = Date.now();
-  const email = `isolation-${stamp}@example.com`;
-  const password = `TestPassw0rd!${stamp}`;
-
   try {
-    const register = await call("POST", "/auth/register", undefined, {
-      name: "Isolation Test",
-      email,
-      password,
-    });
-    if (register.status >= 400) {
-      console.error("Register failed:", register.status, register.json);
-      process.exitCode = 1;
-      return;
-    }
+    // ---------- Part 1: brand-new user with no connection ----------
+    const fresh = await createUser("new");
 
-    const login = await call("POST", "/auth/login", undefined, {
-      email,
-      password,
-    });
-    const token: string | undefined = login.json?.token ?? login.json?.data?.token;
-
-    if (!token) {
-      console.error("No token in login response:", login.json);
-      process.exitCode = 1;
-      return;
-    }
-
-    // 1. Data endpoints must be empty for a new user.
     for (const path of ["/findings", "/resources", "/remediation"]) {
-      const r = await call("GET", path, token);
+      const r = await call("GET", path, fresh.token);
       const count = r.json?.count ?? r.json?.data?.length;
-      record(`GET ${path} is empty for new user`, r.status === 200 && count === 0, `(status ${r.status}, count ${count})`);
+      record(
+        `new user: GET ${path} is empty`,
+        r.status === 200 && count === 0,
+        `(status ${r.status}, count ${count})`
+      );
     }
 
-    // 2. No token must be rejected.
-    const noAuth = await call("POST", "/ai/risks/prioritize");
-    record("AI endpoint without token returns 401", noAuth.status === 401, `(status ${noAuth.status})`);
+    for (const [method, path] of [
+      ["GET", "/findings"],
+      ["GET", "/resources"],
+      ["GET", "/remediation"],
+      ["GET", "/security"],
+      ["POST", "/ai/risks/prioritize"],
+    ] as const) {
+      const r = await call(method, path);
+      record(
+        `no token: ${method} ${path} returns 401`,
+        r.status === 401,
+        `(status ${r.status})`
+      );
+    }
 
-    // 3. Prioritize for a new user: instant 200, no Gemini call.
-    const prioritize = await call("POST", "/ai/risks/prioritize", token);
-    record("prioritize returns 200 with no findings", prioritize.status === 200, `(status ${prioritize.status})`);
-
-        // 3b. Dashboard insight for a user with no connection: instant, no Gemini.
-    const insight = await call("GET", "/ai/dashboard/insight", token);
+    const prioritizeEmpty = await call("POST", "/ai/risks/prioritize", fresh.token);
     record(
-      "dashboard insight says NO_CONNECTION for new user",
+      "new user: prioritize returns 200 with no findings",
+      prioritizeEmpty.status === 200,
+      `(status ${prioritizeEmpty.status})`
+    );
+
+    const insight = await call("GET", "/ai/dashboard/insight", fresh.token);
+    record(
+      "new user: dashboard insight says NO_CONNECTION",
       insight.status === 200 && insight.json?.data?.state === "NO_CONNECTION",
       `(status ${insight.status}, state ${insight.json?.data?.state})`
     );
 
-    // 4. Someone else's finding must be a 404.
-    const someoneElses = await prisma.finding.findFirst({ select: { id: true } });
-    if (!someoneElses) {
-      record("explain/remediation on another user's finding", false, "(no findings in DB to test with)");
-    } else {
-      const id = encodeURIComponent(someoneElses.id);
-      for (const action of ["explain", "remediation"]) {
-        const r = await call("POST", `/ai/findings/${id}/${action}`, token);
-        record(`${action} on another user's finding returns 404`, r.status === 404, `(status ${r.status})`);
-      }
+    // ---------- Part 2: two users who both have data ----------
+    const stamp = Date.now();
+    const tagA = `isotestA${stamp}`;
+    const tagB = `isotestB${stamp}`;
+
+    const userA = await createUser("A");
+    const userB = await createUser("B");
+
+    const seedA = await seedAccount(
+      tagA,
+      userA.userId,
+      "111111111111",
+      ["bucket-a1", "bucket-a2"],
+      [
+        { suffix: "1", severity: "HIGH", withRemediation: true },
+        { suffix: "2", severity: "LOW", withRemediation: false },
+      ]
+    );
+
+    const seedB = await seedAccount(
+      tagB,
+      userB.userId,
+      "222222222222",
+      ["bucket-b1"],
+      [{ suffix: "1", severity: "CRITICAL", withRemediation: true }]
+    );
+
+    // Score = 100 - (HIGH 10 + LOW 2) = 88 for A; 100 - CRITICAL 20 = 80 for B.
+    await checkOwnData("A", tagA, userA.token, {
+      resources: 2,
+      findings: 2,
+      remediations: 1,
+      score: 88,
+    });
+
+    await checkOwnData("B", tagB, userB.token, {
+      resources: 1,
+      findings: 1,
+      remediations: 1,
+      score: 80,
+    });
+
+    // Cross-user access must look like "not found".
+    const bFinding = encodeURIComponent(seedB.findingIds[0]);
+    const aFinding = encodeURIComponent(seedA.findingIds[0]);
+
+    const crossChecks: [string, string, string, string][] = [
+      ["A explain B's finding returns 404", "POST", `/ai/findings/${bFinding}/explain`, userA.token],
+      ["A remediation on B's finding returns 404", "POST", `/ai/findings/${bFinding}/remediation`, userA.token],
+      ["B explain A's finding returns 404", "POST", `/ai/findings/${aFinding}/explain`, userB.token],
+      ["B remediation on A's finding returns 404", "POST", `/ai/findings/${aFinding}/remediation`, userB.token],
+      ["B sync A's connection returns 404", "POST", `/aws/connections/${seedA.connectionId}/sync`, userB.token],
+      ["B delete A's connection returns 404", "DELETE", `/aws/connections/${seedA.connectionId}`, userB.token],
+      ["A sync B's connection returns 404", "POST", `/aws/connections/${seedB.connectionId}/sync`, userA.token],
+    ];
+
+    for (const [name, method, path, token] of crossChecks) {
+      const r = await call(method, path, token);
+      record(name, r.status === 404, `(status ${r.status})`);
     }
 
-    // 5. Rate limit: 12 cheap calls, expect 429 at the end.
+    // A's connection must have survived B's delete attempt.
+    const stillThere = await prisma.aWSConnection.count({
+      where: { id: seedA.connectionId },
+    });
+    record(
+      "A's connection still exists after B's delete attempt",
+      stillThere === 1,
+      `(count ${stillThere})`
+    );
+
+    // ---------- Part 3: rate limit (fresh user has no findings, no Gemini cost) ----------
     let limited = 0;
     for (let i = 0; i < 12; i++) {
-      const r = await call("POST", "/ai/risks/prioritize", token);
+      const r = await call("POST", "/ai/risks/prioritize", fresh.token);
       if (r.status === 429) limited++;
     }
-    record("rate limit returns 429 after the limit", limited >= 1, `(${limited} of 12 calls limited)`);
+    record(
+      "rate limit returns 429 after the limit",
+      limited >= 1,
+      `(${limited} of 12 calls limited)`
+    );
   } finally {
-    await prisma.user.deleteMany({ where: { email } });
+    // Cascade removes connections, resources, findings and remediations.
+    // The prefix match also sweeps up users left behind by earlier failed runs.
+    await prisma.user.deleteMany({
+      where: {
+        OR: [
+          { email: { in: createdEmails } },
+          { email: { startsWith: "isotest-" } },
+        ],
+      },
+    });
   }
 
   console.table(results);
-  const failed = results.some((r) => r.result.startsWith("FAIL"));
-  console.log(failed ? "\nSOME CHECKS FAILED" : "\nALL CHECKS PASSED");
-  process.exitCode = failed ? 1 : 0;
+
+  const failed = results.filter((r) => r.result.startsWith("FAIL")).length;
+  console.log(
+    failed === 0
+      ? `\nALL ${results.length} CHECKS PASSED`
+      : `\nSOME CHECKS FAILED (${failed} of ${results.length})`
+  );
+  process.exitCode = failed === 0 ? 0 : 1;
 }
 
 main()
