@@ -364,6 +364,30 @@ async function main() {
       record(name, count >= 1, `(count ${count})`);
     }
 
+        // Sign-in events must be logged. First make one failed login for A.
+    const badLogin = await call("POST", "/auth/login", undefined, {
+      email: userA.email,
+      password: "definitely-the-wrong-password",
+    });
+    record(
+      "wrong password returns 401",
+      badLogin.status === 401,
+      `(status ${badLogin.status})`
+    );
+
+    const authChecks: [string, string, string, string][] = [
+      ["audit log records A's registration", userA.userId, "AUTH_REGISTER", "SUCCESS"],
+      ["audit log records A's successful login", userA.userId, "AUTH_LOGIN", "SUCCESS"],
+      ["audit log records A's failed login", userA.userId, "AUTH_LOGIN", "FAILURE"],
+    ];
+
+    for (const [name, userId, action, outcome] of authChecks) {
+      const count = await prisma.auditLog.count({
+        where: { userId, action, outcome },
+      });
+      record(name, count >= 1, `(count ${count})`);
+    }
+
     // ---------- Part 3: rate limit (fresh user has no findings, no Gemini cost) ----------
     let limited = 0;
     for (let i = 0; i < 12; i++) {

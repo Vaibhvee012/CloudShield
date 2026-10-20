@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import prisma from "../lib/prisma";
+import { writeAudit, AuditAction } from "../lib/auditLog";
 
 const getJWTSecret = (): string | null => {
   const secret = process.env.JWT_SECRET;
@@ -49,6 +50,14 @@ export const register = async (req: Request, res: Response) => {
     });
 
     if (existingUser) {
+      // The attempted email is deliberately not stored.
+      await writeAudit({
+        action: AuditAction.AUTH_REGISTER,
+        outcome: "FAILURE",
+        metadata: { reason: "email_already_registered" },
+        ip: req.ip,
+      });
+
       return res.status(409).json({
         success: false,
         message: "User with this email already exists",
@@ -66,6 +75,15 @@ export const register = async (req: Request, res: Response) => {
       },
     });
 
+    await writeAudit({
+      userId: user.id,
+      action: AuditAction.AUTH_REGISTER,
+      outcome: "SUCCESS",
+      targetType: "User",
+      targetId: user.id,
+      ip: req.ip,
+    });
+
     return res.status(201).json({
       success: true,
       message: "User registered successfully",
@@ -78,6 +96,13 @@ export const register = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Registration failed:", error);
+
+    await writeAudit({
+      action: AuditAction.AUTH_REGISTER,
+      outcome: "FAILURE",
+      metadata: { reason: "server_error" },
+      ip: req.ip,
+    });
 
     return res.status(500).json({
       success: false,
@@ -118,6 +143,14 @@ export const login = async (req: Request, res: Response) => {
     });
 
     if (!user) {
+      // Unknown email: no user to attach to, and the email is not stored.
+      await writeAudit({
+        action: AuditAction.AUTH_LOGIN,
+        outcome: "FAILURE",
+        metadata: { reason: "unknown_email" },
+        ip: req.ip,
+      });
+
       return res.status(401).json({
         success: false,
         message: "Invalid email or password",
@@ -127,6 +160,15 @@ export const login = async (req: Request, res: Response) => {
     const passwordMatch = await bcrypt.compare(password, user.password);
 
     if (!passwordMatch) {
+      // Attached to the account being attacked, so its owner can see it.
+      await writeAudit({
+        userId: user.id,
+        action: AuditAction.AUTH_LOGIN,
+        outcome: "FAILURE",
+        metadata: { reason: "bad_password" },
+        ip: req.ip,
+      });
+
       return res.status(401).json({
         success: false,
         message: "Invalid email or password",
@@ -141,6 +183,15 @@ export const login = async (req: Request, res: Response) => {
       secret,
       { expiresIn: "1d" }
     );
+
+    await writeAudit({
+      userId: user.id,
+      action: AuditAction.AUTH_LOGIN,
+      outcome: "SUCCESS",
+      targetType: "User",
+      targetId: user.id,
+      ip: req.ip,
+    });
 
     return res.status(200).json({
       success: true,
@@ -157,6 +208,13 @@ export const login = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Login failed:", error);
+
+    await writeAudit({
+      action: AuditAction.AUTH_LOGIN,
+      outcome: "FAILURE",
+      metadata: { reason: "server_error" },
+      ip: req.ip,
+    });
 
     return res.status(500).json({
       success: false,

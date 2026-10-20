@@ -44,7 +44,11 @@ Database host: localhost
 │ 34      │ "audit log records B's denied sync"                    │ 'PASS (count 1)'                                      │
 │ 35      │ "audit log records B's denied disconnect"              │ 'PASS (count 1)'                                      │
 │ 36      │ "audit log records A's denied sync"                    │ 'PASS (count 1)'                                      │
-│ 37      │ 'rate limit returns 429 after the limit'               │ 'PASS (4 of 12 calls limited)'                        │
+│ 37      │ 'wrong password returns 401'                           │ 'PASS (status 401)'                                   │
+│ 38      │ "audit log records A's registration"                   │ 'PASS (count 1)'                                      │
+│ 39      │ "audit log records A's successful login"               │ 'PASS (count 1)'                                      │
+│ 40      │ "audit log records A's failed login"                   │ 'PASS (count 1)'                                      │
+│ 41      │ 'rate limit returns 429 after the limit'               │ 'PASS (4 of 12 calls limited)'                        │
 └─────────┴────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────┘
 
-ALL 38 CHECKS PASSED
+ALL 42 CHECKS PASSED
