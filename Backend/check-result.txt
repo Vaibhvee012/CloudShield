@@ -39,7 +39,9 @@ Database host: localhost
 │ 29      │ "B delete A's connection returns 404"                  │ 'PASS (status 404)'                                   │
 │ 30      │ "A sync B's connection returns 404"                    │ 'PASS (status 404)'                                   │
 │ 31      │ "A's connection still exists after B's delete attempt" │ 'PASS (count 1)'                                      │
-│ 32      │ 'rate limit returns 429 after the limit'               │ 'PASS (4 of 12 calls limited)'                        │
+│ 32      │ "audit log records A's denied AI attempts"             │ 'PASS (count 2, expected 2)'                          │
+│ 33      │ "audit log records B's denied AI attempts"             │ 'PASS (count 2, expected 2)'                          │
+│ 34      │ 'rate limit returns 429 after the limit'               │ 'PASS (4 of 12 calls limited)'                        │
 └─────────┴────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────┘
 
-ALL 33 CHECKS PASSED
+ALL 35 CHECKS PASSED

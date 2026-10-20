@@ -323,6 +323,34 @@ async function main() {
       `(count ${stillThere})`
     );
 
+        // Denied AI attempts must leave an audit trail for the requester.
+    const deniedA = await prisma.auditLog.count({
+      where: {
+        userId: userA.userId,
+        
+        action: { in: ["AI_EXPLAIN_FINDING", "AI_SUGGEST_REMEDIATION"] },
+        outcome: "DENIED",
+      },
+    });
+    record(
+      "audit log records A's denied AI attempts",
+      deniedA >= 2,
+      `(count ${deniedA}, expected 2)`
+    );
+
+    const deniedB = await prisma.auditLog.count({
+      where: {
+        userId: userB.userId,
+        action: { in: ["AI_EXPLAIN_FINDING", "AI_SUGGEST_REMEDIATION"] },
+        outcome: "DENIED",
+      },
+    });
+    record(
+      "audit log records B's denied AI attempts",
+      deniedB >= 2,
+      `(count ${deniedB}, expected 2)`
+    );
+
     // ---------- Part 3: rate limit (fresh user has no findings, no Gemini cost) ----------
     let limited = 0;
     for (let i = 0; i < 12; i++) {
@@ -334,16 +362,27 @@ async function main() {
       limited >= 1,
       `(${limited} of 12 calls limited)`
     );
-  } finally {
-    // Cascade removes connections, resources, findings and remediations.
-    // The prefix match also sweeps up users left behind by earlier failed runs.
-    await prisma.user.deleteMany({
+    } finally {
+    // Audit rows outlive their user (SetNull), so delete them explicitly first.
+    const testUsers = await prisma.user.findMany({
       where: {
         OR: [
           { email: { in: createdEmails } },
           { email: { startsWith: "isotest-" } },
         ],
       },
+      select: { id: true },
+    });
+
+    const testUserIds = testUsers.map((user) => user.id);
+
+    await prisma.auditLog.deleteMany({
+      where: { userId: { in: testUserIds } },
+    });
+
+    // Cascade removes connections, resources, findings and remediations.
+    await prisma.user.deleteMany({
+      where: { id: { in: testUserIds } },
     });
   }
 

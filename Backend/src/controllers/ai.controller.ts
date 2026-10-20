@@ -3,14 +3,12 @@ import {
   buildSecurityContext,
 } from "../services/aiContextService";
 import { generateAIResponse } from "../services/geminiService";
-import {
-  buildChatPrompt,
-  buildDashboardPrompt,
-} from "../services/aiPrompts";
+import { buildChatPrompt } from "../services/aiPrompts";
 import prisma from "../lib/prisma";
 import { AuthRequest, requireUserId } from "../middleware/auth.middleware";
 import { ownedFindings } from "../lib/ownership";
-import { sendAIError } from "../lib/aiErrors";
+import { AIServiceError, sendAIError } from "../lib/aiErrors";
+import { audit, AuditAction } from "../lib/auditLog";
 import {
   UNTRUSTED_DATA_RULE,
   parseResourceId,
@@ -23,6 +21,9 @@ const MAX_FINDINGS_SCANNED = 200;
 
 const ADVISORY_NOTICE =
   "Advisory only. CloudShield does not change your AWS resources. Review suggestions before applying them.";
+
+const failureStatus = (error: unknown): number =>
+  error instanceof AIServiceError ? error.status : 500;
 
 export const chatWithAI = async (
   req: AuthRequest,
@@ -66,6 +67,14 @@ export const chatWithAI = async (
 
     const response = await generateAIResponse(prompt);
 
+    // The question text itself is never stored, only its length.
+    await audit(req, AuditAction.AI_CHAT, "SUCCESS", {
+      metadata: {
+        questionLength: trimmedQuestion.length,
+        findingsListed: securityContext.summary.findingsListed,
+      },
+    });
+
     return res.status(200).json({
       success: true,
       data: {
@@ -74,6 +83,10 @@ export const chatWithAI = async (
     });
   } catch (error) {
     console.error("CloudShield AI chat error:", error);
+
+    await audit(req, AuditAction.AI_CHAT, "FAILURE", {
+      metadata: { status: failureStatus(error) },
+    });
 
     return sendAIError(
       res,
@@ -113,6 +126,12 @@ export const explainFinding = async (
     });
 
     if (!finding) {
+      await audit(req, AuditAction.AI_EXPLAIN_FINDING, "DENIED", {
+        targetType: "Finding",
+        targetId: id,
+        metadata: { reason: "not_found_or_not_owned" },
+      });
+
       return res.status(404).json({
         success: false,
         message: "Finding not found",
@@ -163,6 +182,11 @@ Rules:
 
     const response = await generateAIResponse(prompt);
 
+    await audit(req, AuditAction.AI_EXPLAIN_FINDING, "SUCCESS", {
+      targetType: "Finding",
+      targetId: finding.id,
+    });
+
     return res.status(200).json({
       success: true,
       data: {
@@ -177,6 +201,12 @@ Rules:
       "CloudShield AI finding explanation error:",
       error
     );
+
+    await audit(req, AuditAction.AI_EXPLAIN_FINDING, "FAILURE", {
+      targetType: "Finding",
+      targetId: String(req.params.id ?? ""),
+      metadata: { status: failureStatus(error) },
+    });
 
     return sendAIError(res, error, "Failed to explain finding");
   }
@@ -273,6 +303,13 @@ Prioritization rules:
 
     const response = await generateAIResponse(prompt);
 
+    await audit(req, AuditAction.AI_PRIORITIZE_RISKS, "SUCCESS", {
+      metadata: {
+        totalOpen,
+        analyzed: findings.length,
+      },
+    });
+
     return res.status(200).json({
       success: true,
       data: {
@@ -286,6 +323,10 @@ Prioritization rules:
       "CloudShield AI risk prioritization error:",
       error
     );
+
+    await audit(req, AuditAction.AI_PRIORITIZE_RISKS, "FAILURE", {
+      metadata: { status: failureStatus(error) },
+    });
 
     return sendAIError(
       res,
@@ -325,6 +366,12 @@ export const suggestRemediation = async (
     });
 
     if (!finding) {
+      await audit(req, AuditAction.AI_SUGGEST_REMEDIATION, "DENIED", {
+        targetType: "Finding",
+        targetId: id,
+        metadata: { reason: "not_found_or_not_owned" },
+      });
+
       return res.status(404).json({
         success: false,
         message: "Finding not found",
@@ -380,6 +427,11 @@ Rules:
 
     const response = await generateAIResponse(prompt);
 
+    await audit(req, AuditAction.AI_SUGGEST_REMEDIATION, "SUCCESS", {
+      targetType: "Finding",
+      targetId: finding.id,
+    });
+
     return res.status(200).json({
       success: true,
       data: {
@@ -395,44 +447,16 @@ Rules:
       error
     );
 
+    await audit(req, AuditAction.AI_SUGGEST_REMEDIATION, "FAILURE", {
+      targetType: "Finding",
+      targetId: String(req.params.id ?? ""),
+      metadata: { status: failureStatus(error) },
+    });
+
     return sendAIError(
       res,
       error,
       "Failed to generate remediation suggestion"
-    );
-  }
-};
-
-export const getDashboardInsight = async (
-  req: AuthRequest,
-  res: Response
-) => {
-  try {
-    const userId = requireUserId(req, res);
-    if (!userId) return;
-
-    const securityContext = await buildSecurityContext(userId);
-
-    const prompt = buildDashboardPrompt(securityContext);
-
-    const response = await generateAIResponse(prompt);
-
-    return res.status(200).json({
-      success: true,
-      data: {
-        insight: response,
-      },
-    });
-  } catch (error) {
-    console.error(
-      "CloudShield AI dashboard insight error:",
-      error
-    );
-
-    return sendAIError(
-      res,
-      error,
-      "Failed to generate dashboard AI insight"
     );
   }
 };

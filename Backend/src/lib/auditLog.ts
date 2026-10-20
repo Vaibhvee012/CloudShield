@@ -1,4 +1,5 @@
 import prisma from "./prisma";
+import type { AuthRequest } from "../middleware/auth.middleware";
 
 export type AuditOutcome = "SUCCESS" | "FAILURE" | "DENIED";
 
@@ -16,7 +17,7 @@ export const AuditAction = {
   ACCESS_DENIED: "ACCESS_DENIED",
 } as const;
 
-type AuditMetadata = Record<string, string | number | boolean | null>;
+export type AuditMetadata = Record<string, string | number | boolean | null>;
 
 type AuditEntry = {
   userId?: string | null;
@@ -53,3 +54,22 @@ export const writeAudit = async (entry: AuditEntry): Promise<void> => {
     );
   }
 };
+
+// Shortcut for authenticated requests: fills in the user and IP.
+export const audit = async (
+  req: AuthRequest,
+  action: string,
+  outcome: AuditOutcome,
+  details: {
+    targetType?: string;
+    targetId?: string;
+    metadata?: AuditMetadata;
+  } = {}
+): Promise<void> =>
+  writeAudit({
+    userId: req.user?.userId,
+    action,
+    outcome,
+    ip: req.ip,
+    ...details,
+  });

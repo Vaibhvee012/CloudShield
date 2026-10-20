@@ -4,8 +4,9 @@ import { AuthRequest, requireUserId } from "../middleware/auth.middleware";
 import { buildSecurityContext } from "../services/aiContextService";
 import { buildDashboardPrompt } from "../services/aiPrompts";
 import { generateAIResponse } from "../services/geminiService";
-import { sendAIError } from "../lib/aiErrors";
+import { AIServiceError, sendAIError } from "../lib/aiErrors";
 import { getCachedInsight, setCachedInsight } from "../lib/insightCache";
+import { audit, AuditAction } from "../lib/auditLog";
 
 export const getDashboardInsight = async (
   req: AuthRequest,
@@ -74,6 +75,14 @@ export const getDashboardInsight = async (
 
     setCachedInsight(userId, fingerprint, insight);
 
+    // Only calls that actually reached Gemini are audited.
+    await audit(req, AuditAction.AI_DASHBOARD_INSIGHT, "SUCCESS", {
+      metadata: {
+        findingsListed: securityContext.summary.findingsListed,
+        forceRefresh,
+      },
+    });
+
     return res.status(200).json({
       success: true,
       data: {
@@ -86,6 +95,12 @@ export const getDashboardInsight = async (
       "CloudShield AI dashboard insight error:",
       error
     );
+
+    await audit(req, AuditAction.AI_DASHBOARD_INSIGHT, "FAILURE", {
+      metadata: {
+        status: error instanceof AIServiceError ? error.status : 500,
+      },
+    });
 
     return sendAIError(
       res,
