@@ -69,3 +69,8 @@ export type AWSConnection = Prisma.AWSConnectionModel
  * 
  */
 export type SyncStatus = Prisma.SyncStatusModel
+/**
+ * Model AuditLog
+ * 
+ */
+export type AuditLog = Prisma.AuditLogModel

@@ -73,6 +73,7 @@ model User {
   role     String @default("VIEWER")
 
   awsConnections AWSConnection[]
+  auditLogs AuditLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -102,4 +103,23 @@ model SyncStatus {
   id           String    @id
   lastSyncedAt DateTime?
   updatedAt    DateTime  @updatedAt
+}
+
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  outcome    String
+  targetType String?
+  targetId   String?
+  metadata   Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  // SetNull keeps the audit trail even if the user is deleted.
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([action])
 }
