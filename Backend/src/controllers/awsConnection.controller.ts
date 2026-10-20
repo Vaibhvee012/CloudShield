@@ -1,9 +1,9 @@
-
 import { Response } from "express";
 import { z } from "zod";
 import prisma from "../lib/prisma";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { assumeAWSRole } from "../services/awsConnectionService";
+import { audit, AuditAction } from "../lib/auditLog";
 
 const connectAWSSchema = z.object({
   accountId: z.string().regex(
@@ -32,6 +32,11 @@ export const connectAWS = async (
     const validation = connectAWSSchema.safeParse(req.body);
 
     if (!validation.success) {
+      await audit(req, AuditAction.AWS_CONNECT, "FAILURE", {
+        targetType: "AWSConnection",
+        metadata: { reason: "validation_failed" },
+      });
+
       return res.status(400).json({
         success: false,
         message: "Invalid AWS connection details",
@@ -45,6 +50,11 @@ export const connectAWS = async (
     const identity = await assumeAWSRole({ roleArn, region });
 
     if (!identity.accountId) {
+      await audit(req, AuditAction.AWS_CONNECT, "FAILURE", {
+        targetType: "AWSConnection",
+        metadata: { reason: "no_account_identity", region },
+      });
+
       return res.status(502).json({
         success: false,
         message: "AWS did not return an account identity",
@@ -52,6 +62,11 @@ export const connectAWS = async (
     }
 
     if (identity.accountId !== accountId) {
+      await audit(req, AuditAction.AWS_CONNECT, "FAILURE", {
+        targetType: "AWSConnection",
+        metadata: { reason: "account_id_mismatch", region },
+      });
+
       return res.status(400).json({
         success: false,
         message:
@@ -80,6 +95,16 @@ export const connectAWS = async (
       },
     });
 
+    // Never store the role ARN. Only the last 4 digits of the account ID.
+    await audit(req, AuditAction.AWS_CONNECT, "SUCCESS", {
+      targetType: "AWSConnection",
+      targetId: connection.id,
+      metadata: {
+        region,
+        accountSuffix: accountId.slice(-4),
+      },
+    });
+
     return res.status(200).json({
       success: true,
       message: "AWS account connected successfully",
@@ -93,6 +118,11 @@ export const connectAWS = async (
     });
   } catch (error) {
     console.error("AWS connection failed:", error);
+
+    await audit(req, AuditAction.AWS_CONNECT, "FAILURE", {
+      targetType: "AWSConnection",
+      metadata: { reason: "aws_connection_failed" },
+    });
 
     return res.status(500).json({
       success: false,

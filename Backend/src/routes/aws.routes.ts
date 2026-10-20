@@ -7,6 +7,7 @@ import {
   AuthRequest,
 } from "../middleware/auth.middleware";
 import { syncUserAWSSecurityFindings } from "../services/awsFindingPersistence";
+import { audit, AuditAction } from "../lib/auditLog";
 
 const router = Router();
 
@@ -259,6 +260,12 @@ router.post(
       });
 
       if (!connection) {
+        await audit(req, AuditAction.AWS_SYNC, "DENIED", {
+          targetType: "AWSConnection",
+          targetId: connectionId,
+          metadata: { reason: "not_found_or_not_owned" },
+        });
+
         return res.status(404).json({
           success: false,
           message: "AWS connection not found",
@@ -281,6 +288,15 @@ router.post(
         select: { lastSyncAt: true },
       });
 
+      await audit(req, AuditAction.AWS_SYNC, "SUCCESS", {
+        targetType: "AWSConnection",
+        targetId: connectionId,
+        metadata: {
+          resources: resources.length,
+          findings: findings.length,
+        },
+      });
+
       return res.json({
         success: true,
         message: "AWS resources and security findings synced successfully",
@@ -296,6 +312,12 @@ router.post(
       });
     } catch (error) {
       console.error("User AWS sync failed:", error);
+
+      await audit(req, AuditAction.AWS_SYNC, "FAILURE", {
+        targetType: "AWSConnection",
+        targetId: String(req.params.connectionId ?? ""),
+      });
+
       return res.status(500).json({
         success: false,
         message: "Failed to sync AWS resources and security findings",
@@ -334,6 +356,12 @@ router.delete(
       });
 
       if (!connection) {
+        await audit(req, AuditAction.AWS_DISCONNECT, "DENIED", {
+          targetType: "AWSConnection",
+          targetId: connectionId,
+          metadata: { reason: "not_found_or_not_owned" },
+        });
+
         return res.status(404).json({
           success: false,
           message: "AWS connection not found",
@@ -344,12 +372,23 @@ router.delete(
         where: { id: connection.id },
       });
 
+      await audit(req, AuditAction.AWS_DISCONNECT, "SUCCESS", {
+        targetType: "AWSConnection",
+        targetId: connection.id,
+      });
+
       return res.json({
         success: true,
         message: "AWS connection disconnected successfully",
       });
     } catch (error) {
       console.error("AWS disconnect failed:", error);
+
+      await audit(req, AuditAction.AWS_DISCONNECT, "FAILURE", {
+        targetType: "AWSConnection",
+        targetId: String(req.params.connectionId ?? ""),
+      });
+
       return res.status(500).json({
         success: false,
         message: "Failed to disconnect AWS account",
@@ -461,6 +500,15 @@ router.post("/full-sync", async (req: AuthRequest, res: Response) => {
       },
     });
 
+    await audit(req, AuditAction.AWS_SYNC, "SUCCESS", {
+      metadata: {
+        scope: "all_connections",
+        connectionsSynced: connections.length,
+        resourcesSynced,
+        findingsSynced,
+      },
+    });
+
     return res.json({
       success: true,
       message: "AWS synchronization completed successfully",
@@ -473,6 +521,10 @@ router.post("/full-sync", async (req: AuthRequest, res: Response) => {
     });
   } catch (error) {
     console.error("Full AWS sync failed:", error);
+
+    await audit(req, AuditAction.AWS_SYNC, "FAILURE", {
+      metadata: { scope: "all_connections" },
+    });
 
     return res.status(500).json({
       success: false,
