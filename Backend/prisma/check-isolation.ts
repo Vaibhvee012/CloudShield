@@ -323,11 +323,10 @@ async function main() {
       `(count ${stillThere})`
     );
 
-        // Denied AI attempts must leave an audit trail for the requester.
+    // Denied AI attempts must leave an audit trail for the requester.
     const deniedA = await prisma.auditLog.count({
       where: {
         userId: userA.userId,
-        
         action: { in: ["AI_EXPLAIN_FINDING", "AI_SUGGEST_REMEDIATION"] },
         outcome: "DENIED",
       },
@@ -351,6 +350,20 @@ async function main() {
       `(count ${deniedB}, expected 2)`
     );
 
+    // Denied connection operations must be logged against the requester.
+    const deniedConnectionOps: [string, string, string, string][] = [
+      ["audit log records B's denied sync", userB.userId, "AWS_SYNC", "DENIED"],
+      ["audit log records B's denied disconnect", userB.userId, "AWS_DISCONNECT", "DENIED"],
+      ["audit log records A's denied sync", userA.userId, "AWS_SYNC", "DENIED"],
+    ];
+
+    for (const [name, userId, action, outcome] of deniedConnectionOps) {
+      const count = await prisma.auditLog.count({
+        where: { userId, action, outcome },
+      });
+      record(name, count >= 1, `(count ${count})`);
+    }
+
     // ---------- Part 3: rate limit (fresh user has no findings, no Gemini cost) ----------
     let limited = 0;
     for (let i = 0; i < 12; i++) {
@@ -362,7 +375,7 @@ async function main() {
       limited >= 1,
       `(${limited} of 12 calls limited)`
     );
-    } finally {
+  } finally {
     // Audit rows outlive their user (SetNull), so delete them explicitly first.
     const testUsers = await prisma.user.findMany({
       where: {
