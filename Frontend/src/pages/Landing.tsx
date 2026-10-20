@@ -1,4 +1,6 @@
 import React from "react";
+import { Link } from "react-router-dom";
+import PublicNav from "../components/PublicNav";
 
 /* ---------- tiny inline icons (no external deps) ---------- */
 type IconProps = { size?: number; color?: string; stroke?: number; children: React.ReactNode };
@@ -56,6 +58,8 @@ const stats = [
 
 /* ---------- component ---------- */
 export default function Landing() {
+  const isLoggedIn = Boolean(localStorage.getItem("cloudshield_token"));
+
   return (
     <div className="cs-root">
       <style>{css}</style>
@@ -73,24 +77,9 @@ export default function Landing() {
         <span className="star" style={{ left: "61%", top: "10%", opacity: 0.6 }} />
       </div>
 
-      {/* nav */}
-      <header className="nav">
-        <div className="nav-in">
-          <div className="nav-l">
-            <div className="logo"><ShieldCheck size={22} /></div>
-            <span className="brand">CloudShield</span>
-            <nav className="links">
-              <a href="#platform">Platform</a>
-              <a href="#security">Security</a>
-              <a href="#docs">Documentation</a>
-            </nav>
-          </div>
-          <div className="nav-r">
-            <button className="btn-outline sm">Sign in</button>
-            <button className="btn-primary sm">Get started <Arrow /></button>
-          </div>
-        </div>
-      </header>
+            {/* nav */}
+      <PublicNav />
+
 
       {/* hero */}
       <main className="hero">
@@ -104,8 +93,15 @@ export default function Landing() {
           and get actionable security insights — all in one place.
         </p>
         <div className="cta">
-          <button className="btn-primary lg"><CloudIcon /> Connect AWS <Arrow /></button>
-          <button className="btn-outline lg"><PlayIcon /> Explore platform</button>
+          <Link
+            to={isLoggedIn ? "/connect" : "/register"}
+            className="btn-primary lg"
+          >
+            <CloudIcon /> Connect AWS <Arrow />
+          </Link>
+          <Link to="/platform" className="btn-outline lg">
+            <PlayIcon /> Explore platform
+          </Link>
         </div>
 
         {/* dashboard mock */}

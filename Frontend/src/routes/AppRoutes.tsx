@@ -13,6 +13,9 @@ import Connect from "../pages/Connect";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import Landing from "../pages/Landing";
+import Platform from "../pages/Platform";
+import Security from "../pages/Security";
+import Docs from "../pages/Docs";
 
 const ProtectedRoute = () => {
   const token = localStorage.getItem("cloudshield_token");
@@ -27,16 +30,15 @@ const ProtectedRoute = () => {
 function AppRoutes() {
   return (
     <Routes>
+      {/* Public pages */}
       <Route path="/" element={<Landing />} />
+      <Route path="/platform" element={<Platform />} />
+      <Route path="/security" element={<Security />} />
+      <Route path="/docs" element={<Docs />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      <Route
-        path="/dashboard"
-        element={<Navigate to="/dashboard" replace />}
-      />
-      
-
+      {/* Signed-in app */}
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/resources" element={<Resources />} />
@@ -48,6 +50,9 @@ function AppRoutes() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/connect" element={<Connect />} />
       </Route>
+
+      {/* Anything else goes home */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
