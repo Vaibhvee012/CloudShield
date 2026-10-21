@@ -1,169 +1,132 @@
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
+export const TOKEN_KEY = "cloudshield_token";
+export const USER_KEY = "cloudshield_user";
 
-const getAuthHeaders = (): HeadersInit => {
-  const token = localStorage.getItem("cloudshield_token");
+// API responses are plain JSON. Typed responses can come later.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ApiResponse = any;
 
-  return token
-    ? {
-        Authorization: `Bearer ${token}`,
-      }
-    : {};
-};
+export class ApiError extends Error {
+  status: number;
 
-// ===============================
-// Security Posture
-// ===============================
-
-export const getSecurityPosture = async () => {
-  const response = await fetch(`${API_BASE_URL}/security`, {
-    headers: getAuthHeaders(),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch security posture");
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
   }
+}
 
-  return response.json();
+export const clearSession = () => {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
 };
 
-// ===============================
-// Resources
-// ===============================
+const handleUnauthorized = () => {
+  clearSession();
 
-export const getResources = async () => {
-  const response = await fetch(`${API_BASE_URL}/resources`, {
-    headers: getAuthHeaders(),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch resources");
+  if (window.location.pathname !== "/login") {
+    window.location.assign("/login");
   }
-
-  return response.json();
 };
 
-// ===============================
-// Findings
-// ===============================
+async function request(
+  path: string,
+  fallbackMessage: string,
+  init: { method?: string; body?: unknown } = {}
+): Promise<ApiResponse> {
+  const token = localStorage.getItem(TOKEN_KEY);
 
-export const getFindings = async () => {
-  const response = await fetch(`${API_BASE_URL}/findings`, {
-    headers: getAuthHeaders(),
-  });
+  let response: Response;
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch findings");
-  }
-
-  return response.json();
-};
-
-// ===============================
-// Remediation
-// ===============================
-
-export const getRemediationActions = async () => {
-  const response = await fetch(`${API_BASE_URL}/remediation`, {
-    headers: getAuthHeaders(),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch remediation actions");
-  }
-
-  return response.json();
-};
-
-// ===============================
-// AWS Full Sync
-// ===============================
-
-export const fullAWSSync = async () => {
-  const response = await fetch(`${API_BASE_URL}/aws/full-sync`, {
-    method: "POST",
-    headers: getAuthHeaders(),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to sync AWS resources and security findings");
-  }
-
-  return response.json();
-};
-
-// ===============================
-// AWS Sync Status
-// ===============================
-
-export const getAWSSyncStatus = async () => {
-  const response = await fetch(`${API_BASE_URL}/aws/sync-status`, {
-    headers: getAuthHeaders(),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch AWS sync status");
-  }
-
-  return response.json();
-};
-
-export const getAWSResources = async () => {
-  const response = await fetch(`${API_BASE_URL}/aws/resources`, {
-    headers: getAuthHeaders(),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch AWS resources");
-  }
-
-  return response.json();
-};
-
-export const getDashboardAIInsight = async () => {
-  const response = await fetch(
-    `${API_BASE_URL}/ai/dashboard/insight`,
-    {
-      method: "GET",
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method: init.method ?? "GET",
       headers: {
-        ...getAuthHeaders(),
-        "Content-Type": "application/json",
+        ...(init.body !== undefined
+          ? { "Content-Type": "application/json" }
+          : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch dashboard AI insight");
-  }
-
-  return response.json();
-};
-
-
-
-export const connectAWS = async (connection: {
-  accountId: string;
-  roleArn: string;
-  region: string;
-}) => {
-  const response = await fetch(`${API_BASE_URL}/aws/connect`, {
-    method: "POST",
-    headers: {
-      ...getAuthHeaders(),
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(connection),
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(
-      data?.message || "Failed to connect AWS account"
+      body:
+        init.body !== undefined ? JSON.stringify(init.body) : undefined,
+    });
+  } catch {
+    throw new ApiError(
+      0,
+      "Unable to reach the CloudShield server. Check your connection and try again."
     );
   }
 
-  return data;
-};
+  const isJson = (response.headers.get("content-type") || "").includes(
+    "application/json"
+  );
 
+  const data = isJson ? await response.json().catch(() => null) : null;
+
+  if (response.status === 401) {
+    handleUnauthorized();
+    throw new ApiError(
+      401,
+      "Your session has expired. Please sign in again."
+    );
+  }
+
+  if (!response.ok) {
+    throw new ApiError(response.status, data?.message || fallbackMessage);
+  }
+
+  return data;
+}
+
+// ===============================
+// Security, resources, findings, remediation
+// ===============================
+
+export const getSecurityPosture = () =>
+  request("/security", "Failed to fetch security posture");
+
+export const getResources = () =>
+  request("/resources", "Failed to fetch resources");
+
+export const getFindings = () =>
+  request("/findings", "Failed to fetch findings");
+
+export const getRemediationActions = () =>
+  request("/remediation", "Failed to fetch remediation actions");
+
+// ===============================
+// AWS
+// ===============================
+
+export const fullAWSSync = () =>
+  request("/aws/full-sync", "Failed to sync AWS resources", {
+    method: "POST",
+  });
+
+export const getAWSSyncStatus = () =>
+  request("/aws/sync-status", "Failed to fetch AWS sync status");
+
+export const getAWSResources = () =>
+  request("/aws/resources", "Failed to fetch AWS resources");
+
+export const connectAWS = (connection: {
+  accountId: string;
+  roleArn: string;
+  region: string;
+}) =>
+  request("/aws/connect", "Failed to connect AWS account", {
+    method: "POST",
+    body: connection,
+  });
+
+// ===============================
+// AI
+// ===============================
+
+export const getDashboardAIInsight = (refresh = false) =>
+  request(
+    `/ai/dashboard/insight${refresh ? "?refresh=1" : ""}`,
+    "Failed to fetch dashboard AI insight"
+  );

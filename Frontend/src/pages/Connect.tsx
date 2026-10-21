@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { Link2, ShieldCheck } from "lucide-react";
-import ConnectHelp from "../components/ConnectHelp";
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+import { connectAWS } from "../services/api";
 
 const REGIONS = [
   { value: "ap-south-1", label: "Asia Pacific (Mumbai) — ap-south-1" },
@@ -59,6 +56,8 @@ const Connect = () => {
           data.message || "Unable to connect to AWS account."
         );
       }
+
+       await connectAWS({ accountId, roleArn, region });
 
       setSuccess("AWS account connected successfully.");
     } catch (err) {
