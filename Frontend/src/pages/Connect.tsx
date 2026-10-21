@@ -1,8 +1,20 @@
 import { useState } from "react";
 import { Link2, ShieldCheck } from "lucide-react";
+import ConnectHelp from "../components/ConnectHelp";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+const REGIONS = [
+  { value: "ap-south-1", label: "Asia Pacific (Mumbai) — ap-south-1" },
+  { value: "ap-south-2", label: "Asia Pacific (Hyderabad) — ap-south-2" },
+  { value: "us-east-1", label: "US East (N. Virginia) — us-east-1" },
+  { value: "us-east-2", label: "US East (Ohio) — us-east-2" },
+  { value: "us-west-1", label: "US West (N. California) — us-west-1" },
+  { value: "us-west-2", label: "US West (Oregon) — us-west-2" },
+  { value: "eu-west-1", label: "Europe (Ireland) — eu-west-1" },
+  { value: "eu-central-1", label: "Europe (Frankfurt) — eu-central-1" },
+];
 
 const Connect = () => {
   const [accountId, setAccountId] = useState("");
@@ -163,61 +175,15 @@ const Connect = () => {
                 onChange={(e) => setRegion(e.target.value)}
                 className="w-full rounded-lg border border-white/10 bg-[#0B0914] px-4 py-3 text-sm text-white outline-none transition focus:border-[#8B5CF6] focus:ring-2 focus:ring-[#8B5CF6]/20"
               >
-                <option
-                  value="ap-south-1"
-                  className="bg-[#0B0914] text-white"
-                >
-                  Asia Pacific (Mumbai) — ap-south-1
-                </option>
-
-                <option
-                  value="ap-south-2"
-                  className="bg-[#0B0914] text-white"
-                >
-                  Asia Pacific (Hyderabad) — ap-south-2
-                </option>
-
-                <option
-                  value="us-east-1"
-                  className="bg-[#0B0914] text-white"
-                >
-                  US East (N. Virginia) — us-east-1
-                </option>
-
-                <option
-                  value="us-east-2"
-                  className="bg-[#0B0914] text-white"
-                >
-                  US East (Ohio) — us-east-2
-                </option>
-
-                <option
-                  value="us-west-1"
-                  className="bg-[#0B0914] text-white"
-                >
-                  US West (N. California) — us-west-1
-                </option>
-
-                <option
-                  value="us-west-2"
-                  className="bg-[#0B0914] text-white"
-                >
-                  US West (Oregon) — us-west-2
-                </option>
-
-                <option
-                  value="eu-west-1"
-                  className="bg-[#0B0914] text-white"
-                >
-                  Europe (Ireland) — eu-west-1
-                </option>
-
-                <option
-                  value="eu-central-1"
-                  className="bg-[#0B0914] text-white"
-                >
-                  Europe (Frankfurt) — eu-central-1
-                </option>
+                {REGIONS.map((r) => (
+                  <option
+                    key={r.value}
+                    value={r.value}
+                    className="bg-[#0B0914] text-white"
+                  >
+                    {r.label}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -244,6 +210,9 @@ const Connect = () => {
               {loading ? "Connecting..." : "Connect AWS"}
             </button>
           </form>
+
+          {/* Help link + step-by-step pop-up (outside the form) */}
+          <ConnectHelp />
         </div>
       </div>
     </div>
