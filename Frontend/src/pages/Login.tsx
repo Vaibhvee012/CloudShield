@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { SESSION_NOTICE_KEY } from "../services/api";
 import {
   ArrowRight,
   CheckCircle2,
@@ -23,6 +24,15 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
+    // Shown when the app sent you here because your session expired.
+  const [notice] = useState(
+    () => sessionStorage.getItem(SESSION_NOTICE_KEY) ?? ""
+  );
+
+  useEffect(() => {
+    sessionStorage.removeItem(SESSION_NOTICE_KEY);
+  }, []);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -42,8 +52,7 @@ const Login = () => {
       });
 
       const data = await response.json();
-      console.log("LOGIN RESPONSE:", data);
-      console.log("LOGIN TOKEN:", data.data?.token);
+      
 
       if (!response.ok) {
         throw new Error(data.message || "Login failed");
@@ -58,8 +67,7 @@ const Login = () => {
         "cloudshield_user",
         JSON.stringify(data.data.user)
       );
-      console.log("STORED TOKEN:",
-        localStorage.getItem("cloudshield_token"));
+
 
       navigate("/dashboard");
     } catch (error) {
@@ -247,6 +255,12 @@ const Login = () => {
                   center.
                 </p>
               </div>
+
+                            {notice && !error && (
+                <div className="mb-5 rounded-xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+                  {notice}
+                </div>
+              )}
 
               {error && (
                 <div className="mb-5 rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">

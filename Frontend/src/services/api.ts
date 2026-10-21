@@ -18,15 +18,27 @@ export class ApiError extends Error {
   }
 }
 
+export const SESSION_NOTICE_KEY = "cloudshield_notice";
+
 export const clearSession = () => {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+};
+
+// Full page navigation on purpose: it also drops any data held in memory.
+export const signOut = () => {
+  clearSession();
+  window.location.assign("/login");
 };
 
 const handleUnauthorized = () => {
   clearSession();
 
   if (window.location.pathname !== "/login") {
+    sessionStorage.setItem(
+      SESSION_NOTICE_KEY,
+      "Your session expired. Please sign in again."
+    );
     window.location.assign("/login");
   }
 };

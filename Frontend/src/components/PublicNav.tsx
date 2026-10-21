@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-
+import { signOut } from "../services/api";
 const ShieldIcon = () => (
   <svg
     width="22"
@@ -75,13 +75,9 @@ export default function PublicNav() {
         </div>
 
         <div className="pn-r">
-          {isLoggedIn ? (
+                    {isLoggedIn ? (
             <>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="pn-btn outline"
-              >
+              <button type="button" onClick={signOut} className="pn-btn outline">
                 Sign out
               </button>
               <Link to="/dashboard" className="pn-btn primary">

@@ -1,6 +1,16 @@
-import {Bell, ChevronDown,Link2, UserCircle} from "lucide-react";
+import {
+  Bell,
+  ChevronDown,
+  Link2,
+  LogOut,
+  UserCircle,
+} from "lucide-react";
 import { Outlet, Link } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
+import { signOut } from "../services/api";
+
+const formatRole = (role: string) =>
+  role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
 
 function DashboardLayout() {
   const storedUser = localStorage.getItem("cloudshield_user");
@@ -16,7 +26,9 @@ function DashboardLayout() {
   }
 
   const userName = user?.name || "CloudShield User";
-  const userRole = user?.role || "Administrator";
+  // No invented fallback: show a role only if the account actually has one.
+  const userRole =
+    typeof user?.role === "string" && user.role ? formatRole(user.role) : "";
 
   return (
     <div className="flex min-h-screen items-stretch bg-[#08070D] text-white">
@@ -40,15 +52,13 @@ function DashboardLayout() {
 
           {/* Header Actions */}
           <div className="flex items-center gap-5">
-
-
             <Link
-  to="/connect"
-  className="flex items-center gap-2 rounded-lg bg-[#8B5CF6] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#7C3AED]"
->
-  <Link2 size={16} strokeWidth={1.8} />
-  Connect AWS
-</Link>
+              to="/connect"
+              className="flex items-center gap-2 rounded-lg bg-[#8B5CF6] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#7C3AED]"
+            >
+              <Link2 size={16} strokeWidth={1.8} />
+              Connect AWS
+            </Link>
 
             {/* Notification */}
             <button
@@ -81,15 +91,23 @@ function DashboardLayout() {
                   {userName}
                 </p>
 
-                <p className="text-[11px] text-gray-500">
-                  {userRole}
-                </p>
+                {userRole && (
+                  <p className="text-[11px] text-gray-500">{userRole}</p>
+                )}
               </div>
 
-              <ChevronDown
-                size={15}
-                className="text-gray-500"
-              />
+              <ChevronDown size={15} className="text-gray-500" />
+            </button>
+
+            {/* Sign out */}
+            <button
+              type="button"
+              onClick={signOut}
+              aria-label="Sign out"
+              className="flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm font-medium text-gray-300 transition hover:border-white/20 hover:bg-white/[0.04] hover:text-white"
+            >
+              <LogOut size={16} strokeWidth={1.8} />
+              <span className="hidden sm:inline">Sign out</span>
             </button>
           </div>
         </header>
@@ -103,4 +121,4 @@ function DashboardLayout() {
   );
 }
 
-export default DashboardLayout;
+export default DashboardLayout;PublicNav.tsx
