@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { signOut } from "../services/api";
+
 const ShieldIcon = () => (
   <svg
     width="22"
@@ -36,17 +36,8 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
   isActive ? "active" : undefined;
 
 export default function PublicNav() {
-  const navigate = useNavigate();
   // Presence check only. The API still validates the token on every request.
-  const [isLoggedIn, setIsLoggedIn] = useState(
-    Boolean(localStorage.getItem("cloudshield_token"))
-  );
-
-  const handleSignOut = () => {
-    localStorage.removeItem("cloudshield_token");
-    setIsLoggedIn(false);
-    navigate("/");
-  };
+  const isLoggedIn = Boolean(localStorage.getItem("cloudshield_token"));
 
   return (
     <header className="pn">
@@ -75,9 +66,13 @@ export default function PublicNav() {
         </div>
 
         <div className="pn-r">
-                    {isLoggedIn ? (
+          {isLoggedIn ? (
             <>
-              <button type="button" onClick={signOut} className="pn-btn outline">
+              <button
+                type="button"
+                onClick={signOut}
+                className="pn-btn outline"
+              >
                 Sign out
               </button>
               <Link to="/dashboard" className="pn-btn primary">

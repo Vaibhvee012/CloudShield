@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link2, ShieldCheck } from "lucide-react";
 import { connectAWS } from "../services/api";
+import ConnectHelp from "../components/ConnectHelp";
 
 const REGIONS = [
   { value: "ap-south-1", label: "Asia Pacific (Mumbai) — ap-south-1" },
@@ -22,7 +23,7 @@ const Connect = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const handleConnect = async (e: React.FormEvent) => {
+    const handleConnect = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setLoading(true);
@@ -30,34 +31,7 @@ const Connect = () => {
     setSuccess("");
 
     try {
-      const token = localStorage.getItem("cloudshield_token");
-
-      if (!token) {
-        throw new Error("Authentication token is missing. Please log in again.");
-      }
-
-      const response = await fetch(`${API_BASE_URL}/aws/connect`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          accountId,
-          roleArn,
-          region,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(
-          data.message || "Unable to connect to AWS account."
-        );
-      }
-
-       await connectAWS({ accountId, roleArn, region });
+      await connectAWS({ accountId, roleArn, region });
 
       setSuccess("AWS account connected successfully.");
     } catch (err) {
