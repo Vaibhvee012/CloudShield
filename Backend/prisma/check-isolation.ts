@@ -252,6 +252,15 @@ async function main() {
       `(status ${insight.status}, state ${insight.json?.data?.state})`
     );
 
+        const posture = await call("GET", "/security", fresh.token);
+    record(
+      "new user: /security says NOT_CONNECTED with no score",
+      posture.status === 200 &&
+        posture.json?.data?.state === "NOT_CONNECTED" &&
+        posture.json?.data?.securityScore === null,
+      `(status ${posture.status}, state ${posture.json?.data?.state}, score ${posture.json?.data?.securityScore})`
+    );
+
     // ---------- Part 2: two users who both have data ----------
     const stamp = Date.now();
     const tagA = `isotestA${stamp}`;
@@ -363,6 +372,59 @@ async function main() {
       });
       record(name, count >= 1, `(count ${count})`);
     }
+
+        // ---------- Audit log API: scoped to the signed-in user ----------
+    const noTokenAudit = await call("GET", "/audit-logs");
+    record(
+      "no token: GET /audit-logs returns 401",
+      noTokenAudit.status === 401,
+      `(status ${noTokenAudit.status})`
+    );
+
+    for (const [label, user, ownFindingId] of [
+      ["A", userA, seedA.findingIds[0]],
+      ["B", userB, seedB.findingIds[0]],
+    ] as const) {
+      const api = await call("GET", "/audit-logs?limit=100", user.token);
+      const dbCount = await prisma.auditLog.count({
+        where: { userId: user.userId },
+      });
+      const rows: any[] = Array.isArray(api.json?.data) ? api.json.data : [];
+
+      record(
+        `${label}: audit log API returns exactly own rows`,
+        api.status === 200 && rows.length === dbCount,
+        `(status ${api.status}, api ${rows.length}, db ${dbCount})`
+      );
+
+      // Other users' failed probes of this user's finding belong to THEM.
+      const leaked = rows.filter((row) => row.targetId === ownFindingId).length;
+      record(
+        `${label}: audit log hides other users' probes of own finding`,
+        leaked === 0,
+        `(leaked rows ${leaked})`
+      );
+    }
+
+    const page1 = await call("GET", "/audit-logs?limit=1", userA.token);
+    record(
+      "audit log API paginates with a cursor",
+      page1.status === 200 &&
+        page1.json?.data?.length === 1 &&
+        typeof page1.json?.nextCursor === "string",
+      `(status ${page1.status}, rows ${page1.json?.data?.length}, cursor ${page1.json?.nextCursor ? "yes" : "no"})`
+    );
+
+    const badFilter = await call(
+      "GET",
+      "/audit-logs?action=NOT_A_REAL_ACTION",
+      userA.token
+    );
+    record(
+      "audit log API rejects an invalid filter",
+      badFilter.status === 400,
+      `(status ${badFilter.status})`
+    );
 
         // Sign-in events must be logged. First make one failed login for A.
     const badLogin = await call("POST", "/auth/login", undefined, {

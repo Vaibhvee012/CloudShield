@@ -11,17 +11,21 @@ export const getSecurityPosture = async (
     const userId = requireUserId(req, res);
     if (!userId) return;
 
-    // Only this user's active findings affect the score
-    const findings = await prisma.finding.findMany({
-      where: {
-        ...ownedFindings(userId),
-        status: "OPEN",
-      },
-    });
+    const [connectionCount, findings, resources] = await Promise.all([
+      prisma.aWSConnection.count({ where: { userId } }),
 
-    const resources = await prisma.resource.findMany({
-      where: ownedResources(userId),
-    });
+      // Only this user's active findings affect the score
+      prisma.finding.findMany({
+        where: {
+          ...ownedFindings(userId),
+          status: "OPEN",
+        },
+      }),
+
+      prisma.resource.findMany({
+        where: ownedResources(userId),
+      }),
+    ]);
 
     const critical = findings.filter(
       (finding) => finding.severity === "CRITICAL"
@@ -47,10 +51,18 @@ export const getSecurityPosture = async (
       medium * 5 +
       low * 2;
 
-    const securityScore = Math.max(
-      0,
-      Math.min(100, 100 - riskPoints)
-    );
+    // A score only means something when there is data behind it.
+    const state =
+      connectionCount === 0
+        ? "NOT_CONNECTED"
+        : resources.length === 0
+          ? "NO_DATA"
+          : "READY";
+
+    const securityScore =
+      state === "READY"
+        ? Math.max(0, Math.min(100, 100 - riskPoints))
+        : null;
 
     const resourcesWithFindings = new Set(
       findings.map((finding) => finding.resourceId)
@@ -77,6 +89,8 @@ export const getSecurityPosture = async (
     res.json({
       success: true,
       data: {
+        state,
+        connected: connectionCount > 0,
         securityScore,
         totalFindings,
 

@@ -4,51 +4,59 @@
 
 API: http://localhost:5000/api
 Database host: localhost
-┌─────────┬────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────┐
-│ (index) │ check                                                  │ result                                                │
-├─────────┼────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────┤
-│ 0       │ 'new user: GET /findings is empty'                     │ 'PASS (status 200, count 0)'                          │
-│ 1       │ 'new user: GET /resources is empty'                    │ 'PASS (status 200, count 0)'                          │
-│ 2       │ 'new user: GET /remediation is empty'                  │ 'PASS (status 200, count 0)'                          │
-│ 3       │ 'no token: GET /findings returns 401'                  │ 'PASS (status 401)'                                   │
-│ 4       │ 'no token: GET /resources returns 401'                 │ 'PASS (status 401)'                                   │
-│ 5       │ 'no token: GET /remediation returns 401'               │ 'PASS (status 401)'                                   │
-│ 6       │ 'no token: GET /security returns 401'                  │ 'PASS (status 401)'                                   │
-│ 7       │ 'no token: POST /ai/risks/prioritize returns 401'      │ 'PASS (status 401)'                                   │
-│ 8       │ 'new user: prioritize returns 200 with no findings'    │ 'PASS (status 200)'                                   │
-│ 9       │ 'new user: dashboard insight says NO_CONNECTION'       │ 'PASS (status 200, state NO_CONNECTION)'              │
-│ 10      │ 'A: GET /resources returns only own rows'              │ 'PASS (status 200, rows 2, expected 2, onlyOwn true)' │
-│ 11      │ 'A: GET /findings returns only own rows'               │ 'PASS (status 200, rows 2, expected 2, onlyOwn true)' │
-│ 12      │ 'A: GET /remediation returns only own rows'            │ 'PASS (status 200, rows 1, expected 1, onlyOwn true)' │
-│ 13      │ 'A: GET /aws/resources returns only own rows'          │ 'PASS (status 200, rows 2, expected 2, onlyOwn true)' │
-│ 14      │ 'A: GET /aws/findings returns only own rows'           │ 'PASS (status 200, rows 2, expected 2, onlyOwn true)' │
-│ 15      │ 'A: GET /aws/connections returns only own rows'        │ 'PASS (status 200, rows 1, expected 1, onlyOwn true)' │
-│ 16      │ 'A: /security counts only own findings'                │ 'PASS (findings 2, score 88, expected 2/88)'          │
-│ 17      │ 'B: GET /resources returns only own rows'              │ 'PASS (status 200, rows 1, expected 1, onlyOwn true)' │
-│ 18      │ 'B: GET /findings returns only own rows'               │ 'PASS (status 200, rows 1, expected 1, onlyOwn true)' │
-│ 19      │ 'B: GET /remediation returns only own rows'            │ 'PASS (status 200, rows 1, expected 1, onlyOwn true)' │
-│ 20      │ 'B: GET /aws/resources returns only own rows'          │ 'PASS (status 200, rows 1, expected 1, onlyOwn true)' │
-│ 21      │ 'B: GET /aws/findings returns only own rows'           │ 'PASS (status 200, rows 1, expected 1, onlyOwn true)' │
-│ 22      │ 'B: GET /aws/connections returns only own rows'        │ 'PASS (status 200, rows 1, expected 1, onlyOwn true)' │
-│ 23      │ 'B: /security counts only own findings'                │ 'PASS (findings 1, score 80, expected 1/80)'          │
-│ 24      │ "A explain B's finding returns 404"                    │ 'PASS (status 404)'                                   │
-│ 25      │ "A remediation on B's finding returns 404"             │ 'PASS (status 404)'                                   │
-│ 26      │ "B explain A's finding returns 404"                    │ 'PASS (status 404)'                                   │
-│ 27      │ "B remediation on A's finding returns 404"             │ 'PASS (status 404)'                                   │
-│ 28      │ "B sync A's connection returns 404"                    │ 'PASS (status 404)'                                   │
-│ 29      │ "B delete A's connection returns 404"                  │ 'PASS (status 404)'                                   │
-│ 30      │ "A sync B's connection returns 404"                    │ 'PASS (status 404)'                                   │
-│ 31      │ "A's connection still exists after B's delete attempt" │ 'PASS (count 1)'                                      │
-│ 32      │ "audit log records A's denied AI attempts"             │ 'PASS (count 2, expected 2)'                          │
-│ 33      │ "audit log records B's denied AI attempts"             │ 'PASS (count 2, expected 2)'                          │
-│ 34      │ "audit log records B's denied sync"                    │ 'PASS (count 1)'                                      │
-│ 35      │ "audit log records B's denied disconnect"              │ 'PASS (count 1)'                                      │
-│ 36      │ "audit log records A's denied sync"                    │ 'PASS (count 1)'                                      │
-│ 37      │ 'wrong password returns 401'                           │ 'PASS (status 401)'                                   │
-│ 38      │ "audit log records A's registration"                   │ 'PASS (count 1)'                                      │
-│ 39      │ "audit log records A's successful login"               │ 'PASS (count 1)'                                      │
-│ 40      │ "audit log records A's failed login"                   │ 'PASS (count 1)'                                      │
-│ 41      │ 'rate limit returns 429 after the limit'               │ 'PASS (4 of 12 calls limited)'                        │
-└─────────┴────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────┘
+┌─────────┬─────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────┐
+│ (index) │ check                                                   │ result                                                │
+├─────────┼─────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────┤
+│ 0       │ 'new user: GET /findings is empty'                      │ 'PASS (status 200, count 0)'                          │
+│ 1       │ 'new user: GET /resources is empty'                     │ 'PASS (status 200, count 0)'                          │
+│ 2       │ 'new user: GET /remediation is empty'                   │ 'PASS (status 200, count 0)'                          │
+│ 3       │ 'no token: GET /findings returns 401'                   │ 'PASS (status 401)'                                   │
+│ 4       │ 'no token: GET /resources returns 401'                  │ 'PASS (status 401)'                                   │
+│ 5       │ 'no token: GET /remediation returns 401'                │ 'PASS (status 401)'                                   │
+│ 6       │ 'no token: GET /security returns 401'                   │ 'PASS (status 401)'                                   │
+│ 7       │ 'no token: POST /ai/risks/prioritize returns 401'       │ 'PASS (status 401)'                                   │
+│ 8       │ 'new user: prioritize returns 200 with no findings'     │ 'PASS (status 200)'                                   │
+│ 9       │ 'new user: dashboard insight says NO_CONNECTION'        │ 'PASS (status 200, state NO_CONNECTION)'              │
+│ 10      │ 'new user: /security says NOT_CONNECTED with no score'  │ 'PASS (status 200, state NOT_CONNECTED, score null)'  │
+│ 11      │ 'A: GET /resources returns only own rows'               │ 'PASS (status 200, rows 2, expected 2, onlyOwn true)' │
+│ 12      │ 'A: GET /findings returns only own rows'                │ 'PASS (status 200, rows 2, expected 2, onlyOwn true)' │
+│ 13      │ 'A: GET /remediation returns only own rows'             │ 'PASS (status 200, rows 1, expected 1, onlyOwn true)' │
+│ 14      │ 'A: GET /aws/resources returns only own rows'           │ 'PASS (status 200, rows 2, expected 2, onlyOwn true)' │
+│ 15      │ 'A: GET /aws/findings returns only own rows'            │ 'PASS (status 200, rows 2, expected 2, onlyOwn true)' │
+│ 16      │ 'A: GET /aws/connections returns only own rows'         │ 'PASS (status 200, rows 1, expected 1, onlyOwn true)' │
+│ 17      │ 'A: /security counts only own findings'                 │ 'PASS (findings 2, score 88, expected 2/88)'          │
+│ 18      │ 'B: GET /resources returns only own rows'               │ 'PASS (status 200, rows 1, expected 1, onlyOwn true)' │
+│ 19      │ 'B: GET /findings returns only own rows'                │ 'PASS (status 200, rows 1, expected 1, onlyOwn true)' │
+│ 20      │ 'B: GET /remediation returns only own rows'             │ 'PASS (status 200, rows 1, expected 1, onlyOwn true)' │
+│ 21      │ 'B: GET /aws/resources returns only own rows'           │ 'PASS (status 200, rows 1, expected 1, onlyOwn true)' │
+│ 22      │ 'B: GET /aws/findings returns only own rows'            │ 'PASS (status 200, rows 1, expected 1, onlyOwn true)' │
+│ 23      │ 'B: GET /aws/connections returns only own rows'         │ 'PASS (status 200, rows 1, expected 1, onlyOwn true)' │
+│ 24      │ 'B: /security counts only own findings'                 │ 'PASS (findings 1, score 80, expected 1/80)'          │
+│ 25      │ "A explain B's finding returns 404"                     │ 'PASS (status 404)'                                   │
+│ 26      │ "A remediation on B's finding returns 404"              │ 'PASS (status 404)'                                   │
+│ 27      │ "B explain A's finding returns 404"                     │ 'PASS (status 404)'                                   │
+│ 28      │ "B remediation on A's finding returns 404"              │ 'PASS (status 404)'                                   │
+│ 29      │ "B sync A's connection returns 404"                     │ 'PASS (status 404)'                                   │
+│ 30      │ "B delete A's connection returns 404"                   │ 'PASS (status 404)'                                   │
+│ 31      │ "A sync B's connection returns 404"                     │ 'PASS (status 404)'                                   │
+│ 32      │ "A's connection still exists after B's delete attempt"  │ 'PASS (count 1)'                                      │
+│ 33      │ "audit log records A's denied AI attempts"              │ 'PASS (count 2, expected 2)'                          │
+│ 34      │ "audit log records B's denied AI attempts"              │ 'PASS (count 2, expected 2)'                          │
+│ 35      │ "audit log records B's denied sync"                     │ 'PASS (count 1)'                                      │
+│ 36      │ "audit log records B's denied disconnect"               │ 'PASS (count 1)'                                      │
+│ 37      │ "audit log records A's denied sync"                     │ 'PASS (count 1)'                                      │
+│ 38      │ 'no token: GET /audit-logs returns 401'                 │ 'FAIL (status 404)'                                   │
+│ 39      │ 'A: audit log API returns exactly own rows'             │ 'FAIL (status 404, api 0, db 5)'                      │
+│ 40      │ "A: audit log hides other users' probes of own finding" │ 'PASS (leaked rows 0)'                                │
+│ 41      │ 'B: audit log API returns exactly own rows'             │ 'FAIL (status 404, api 0, db 6)'                      │
+│ 42      │ "B: audit log hides other users' probes of own finding" │ 'PASS (leaked rows 0)'                                │
+│ 43      │ 'audit log API paginates with a cursor'                 │ 'FAIL (status 404, rows undefined, cursor no)'        │
+│ 44      │ 'audit log API rejects an invalid filter'               │ 'FAIL (status 404)'                                   │
+│ 45      │ 'wrong password returns 401'                            │ 'PASS (status 401)'                                   │
+│ 46      │ "audit log records A's registration"                    │ 'PASS (count 1)'                                      │
+│ 47      │ "audit log records A's successful login"                │ 'PASS (count 1)'                                      │
+│ 48      │ "audit log records A's failed login"                    │ 'PASS (count 1)'                                      │
+│ 49      │ 'rate limit returns 429 after the limit'                │ 'PASS (4 of 12 calls limited)'                        │
+└─────────┴─────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────┘
 
-ALL 42 CHECKS PASSED
+SOME CHECKS FAILED (5 of 50)
