@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -7,10 +6,14 @@ import {
   ShieldAlert,
 } from "lucide-react";
 
+import { PageEmpty, PageError, PageLoading } from "../components/PageState";
+import { useApiData } from "../hooks/useApiData";
+import type { ConnectionState } from "../hooks/useApiData";
 import { getSecurityPosture } from "../services/api";
 
 interface SecurityData {
-  securityScore: number;
+  state: ConnectionState;
+  securityScore: number | null;
   totalFindings: number;
   severity: {
     critical: number;
@@ -26,61 +29,46 @@ interface SecurityData {
 }
 
 function SecurityScore() {
-  const [data, setData] = useState<SecurityData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    const fetchSecurityScore = async () => {
-      try {
-        const response = await getSecurityPosture();
-
-        setData(response.data);
-      } catch (error) {
-        setError("Failed to load security score");
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSecurityScore();
-  }, []);
+  const { data, loading, error, reload } = useApiData<SecurityData>(
+    getSecurityPosture,
+    "Failed to load security score"
+  );
 
   if (loading) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#8B5CF6] border-t-transparent" />
+    return <PageLoading label="Calculating security score..." />;
+  }
 
-          <p className="mt-4 text-sm text-gray-500">
-            Calculating security score...
-          </p>
-        </div>
-      </div>
+  if (error) {
+    return (
+      <PageError
+        title="Unable to load security score"
+        message={error}
+        onRetry={reload}
+      />
     );
   }
 
-  if (error || !data) {
+  if (!data || data.state === "NOT_CONNECTED") {
     return (
-      <div className="rounded-2xl border border-[#EF4444]/20 bg-[#0B0914] p-6">
-        <div className="flex items-center gap-3">
-          <AlertTriangle
-            size={20}
-            className="text-[#EF4444]"
-          />
+      <PageEmpty
+        icon={Gauge}
+        title="No security score yet"
+        message="Connect an AWS account and run a scan. CloudShield calculates your score from the findings in your environment."
+        actionLabel="Connect AWS"
+        actionTo="/connect"
+      />
+    );
+  }
 
-          <div>
-            <h2 className="font-semibold text-white">
-              Unable to load security score
-            </h2>
-
-            <p className="mt-1 text-sm text-gray-500">
-              {error || "Security data is unavailable."}
-            </p>
-          </div>
-        </div>
-      </div>
+  if (data.state === "NO_DATA") {
+    return (
+      <PageEmpty
+        icon={Gauge}
+        title="Waiting for your first scan"
+        message="Your AWS account is connected. Run a scan from the dashboard to calculate your security score."
+        actionLabel="Go to dashboard"
+        actionTo="/dashboard"
+      />
     );
   }
 

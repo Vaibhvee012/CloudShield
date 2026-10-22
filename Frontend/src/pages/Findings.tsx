@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -6,6 +5,12 @@ import {
   ShieldAlert,
 } from "lucide-react";
 
+import {
+  ConnectionEmpty,
+  PageError,
+  PageLoading,
+} from "../components/PageState";
+import { useApiData, useConnectionState } from "../hooks/useApiData";
 import { getFindings } from "../services/api";
 
 interface FindingResource {
@@ -35,61 +40,24 @@ interface Finding {
 }
 
 function Findings() {
-  const [findings, setFindings] = useState<Finding[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    const fetchFindings = async () => {
-      try {
-        const response = await getFindings();
-
-        setFindings(response.data);
-      } catch (error) {
-        setError("Failed to load findings");
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchFindings();
-  }, []);
+  const { data, loading, error, reload } = useApiData<Finding[]>(
+    getFindings,
+    "Failed to load findings"
+  );
+  const connection = useConnectionState();
+  const findings = data ?? [];
 
   if (loading) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#8B5CF6] border-t-transparent" />
-
-          <p className="mt-4 text-sm text-gray-500">
-            Loading security findings...
-          </p>
-        </div>
-      </div>
-    );
+    return <PageLoading label="Loading security findings..." />;
   }
 
   if (error) {
     return (
-      <div className="rounded-2xl border border-[#EF4444]/20 bg-[#0B0914] p-6">
-        <div className="flex items-center gap-3">
-          <AlertTriangle
-            size={20}
-            className="text-[#EF4444]"
-          />
-
-          <div>
-            <h2 className="font-semibold text-white">
-              Unable to load findings
-            </h2>
-
-            <p className="mt-1 text-sm text-gray-500">
-              {error}
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageError
+        title="Unable to load findings"
+        message={error}
+        onRetry={reload}
+      />
     );
   }
 
@@ -189,20 +157,15 @@ function Findings() {
         </div>
 
         {findings.length === 0 ? (
-          <div className="px-6 py-14 text-center">
-            <CheckCircle2
-              size={34}
-              className="mx-auto text-[#22C55E]"
-            />
-
-            <p className="mt-3 text-sm font-medium text-gray-300">
-              No security findings
-            </p>
-
-            <p className="mt-1 text-xs text-gray-600">
-              Your connected environment currently has no detected findings.
-            </p>
-          </div>
+                    <ConnectionEmpty
+            connection={connection}
+            noun="findings"
+            icon={CheckCircle2}
+            good
+            emptyTitle="No security findings"
+            emptyMessage="Your latest scan found no security issues."
+          />
+          
         ) : (
           <div className="divide-y divide-white/5">
             {findings.map((finding) => (

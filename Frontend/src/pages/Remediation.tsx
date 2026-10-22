@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -7,6 +6,12 @@ import {
   Wrench,
 } from "lucide-react";
 
+import {
+  ConnectionEmpty,
+  PageError,
+  PageLoading,
+} from "../components/PageState";
+import { useApiData, useConnectionState } from "../hooks/useApiData";
 import { getRemediationActions } from "../services/api";
 
 interface RemediationResource {
@@ -44,56 +49,24 @@ interface RemediationAction {
 }
 
 function Remediation() {
-  const [actions, setActions] = useState<RemediationAction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    const fetchRemediationActions = async () => {
-      try {
-        const response = await getRemediationActions();
-
-        setActions(response.data);
-      } catch (error) {
-        setError("Failed to load remediation actions");
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRemediationActions();
-  }, []);
+  const { data, loading, error, reload } = useApiData<RemediationAction[]>(
+    getRemediationActions,
+    "Failed to load remediation suggestions"
+  );
+  const connection = useConnectionState();
+  const actions = data ?? [];
 
   if (loading) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#8B5CF6] border-t-transparent" />
-
-          <p className="mt-4 text-sm text-gray-500">
-            Loading remediation actions...
-          </p>
-        </div>
-      </div>
-    );
+    return <PageLoading label="Loading remediation suggestions..." />;
   }
 
   if (error) {
     return (
-      <div className="rounded-2xl border border-[#EF4444]/20 bg-[#0B0914] p-6">
-        <div className="flex items-center gap-3">
-          <AlertTriangle size={20} className="text-[#EF4444]" />
-
-          <div>
-            <h2 className="font-semibold text-white">
-              Unable to load remediation actions
-            </h2>
-
-            <p className="mt-1 text-sm text-gray-500">{error}</p>
-          </div>
-        </div>
-      </div>
+      <PageError
+        title="Unable to load remediation suggestions"
+        message={error}
+        onRetry={reload}
+      />
     );
   }
 
@@ -202,18 +175,13 @@ function Remediation() {
         </div>
 
         {actions.length === 0 ? (
-          <div className="px-6 py-14 text-center">
-            <Shield size={34} className="mx-auto text-gray-600" />
-
-            <p className="mt-3 text-sm font-medium text-gray-300">
-              No remediation actions
-            </p>
-
-            <p className="mt-1 text-xs text-gray-600">
-              Remediation actions will appear here when security issues require
-              corrective action.
-            </p>
-          </div>
+                    <ConnectionEmpty
+            connection={connection}
+            noun="remediation suggestions"
+            icon={Shield}
+            emptyTitle="No remediation suggestions"
+            emptyMessage="Suggestions appear here when security findings need corrective action. CloudShield only advises. You apply fixes yourself in AWS."
+          />
         ) : (
           <div className="divide-y divide-white/5">
             {actions.map((action) => (

@@ -1,6 +1,4 @@
-import { useEffect, useState } from "react";
 import {
-  AlertTriangle,
   CheckCircle2,
   Cloud,
   Database,
@@ -9,6 +7,12 @@ import {
 } from "lucide-react";
 
 import CloudMap from "../components/CloudMap";
+import {
+  ConnectionEmpty,
+  PageError,
+  PageLoading,
+} from "../components/PageState";
+import { useApiData, useConnectionState } from "../hooks/useApiData";
 import { getResources } from "../services/api";
 
 interface Resource {
@@ -23,61 +27,24 @@ interface Resource {
 }
 
 function Resources() {
-  const [resources, setResources] = useState<Resource[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    const fetchResources = async () => {
-      try {
-        const response = await getResources();
-
-        setResources(response.data);
-      } catch (error) {
-        setError("Failed to load resources");
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchResources();
-  }, []);
+  const { data, loading, error, reload } = useApiData<Resource[]>(
+    getResources,
+    "Failed to load resources"
+  );
+  const connection = useConnectionState();
+  const resources = data ?? [];
 
   if (loading) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#8B5CF6] border-t-transparent" />
-
-          <p className="mt-4 text-sm text-gray-500">
-            Loading AWS resources...
-          </p>
-        </div>
-      </div>
-    );
+    return <PageLoading label="Loading AWS resources..." />;
   }
 
   if (error) {
     return (
-      <div className="rounded-2xl border border-[#EF4444]/20 bg-[#0B0914] p-6">
-        <div className="flex items-center gap-3">
-          <AlertTriangle
-            className="shrink-0 text-[#EF4444]"
-            size={20}
-          />
-
-          <div className="min-w-0">
-            <h2 className="font-semibold text-white">
-              Unable to load resources
-            </h2>
-
-            <p className="mt-1 text-sm text-gray-500">
-              {error}
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageError
+        title="Unable to load resources"
+        message={error}
+        onRetry={reload}
+      />
     );
   }
 
@@ -191,20 +158,13 @@ function Resources() {
         </div>
 
         {resources.length === 0 ? (
-          <div className="px-6 py-12 text-center">
-            <Cloud
-              size={32}
-              className="mx-auto text-gray-600"
-            />
-
-            <p className="mt-3 text-sm text-gray-400">
-              No AWS resources found
-            </p>
-
-            <p className="mt-1 text-xs text-gray-600">
-              Connect an AWS account to begin resource discovery.
-            </p>
-          </div>
+                    <ConnectionEmpty
+            connection={connection}
+            noun="resources"
+            icon={Cloud}
+            emptyTitle="No AWS resources found"
+            emptyMessage="No resources were discovered in your connected environment."
+          />
         ) : (
           <div className="divide-y divide-white/5">
             {resources.map((resource) => (
