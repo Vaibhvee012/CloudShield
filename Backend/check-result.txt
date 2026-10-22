@@ -45,13 +45,13 @@ Database host: localhost
 │ 35      │ "audit log records B's denied sync"                     │ 'PASS (count 1)'                                      │
 │ 36      │ "audit log records B's denied disconnect"               │ 'PASS (count 1)'                                      │
 │ 37      │ "audit log records A's denied sync"                     │ 'PASS (count 1)'                                      │
-│ 38      │ 'no token: GET /audit-logs returns 401'                 │ 'FAIL (status 404)'                                   │
-│ 39      │ 'A: audit log API returns exactly own rows'             │ 'FAIL (status 404, api 0, db 5)'                      │
+│ 38      │ 'no token: GET /audit-logs returns 401'                 │ 'PASS (status 401)'                                   │
+│ 39      │ 'A: audit log API returns exactly own rows'             │ 'PASS (status 200, api 5, db 5)'                      │
 │ 40      │ "A: audit log hides other users' probes of own finding" │ 'PASS (leaked rows 0)'                                │
-│ 41      │ 'B: audit log API returns exactly own rows'             │ 'FAIL (status 404, api 0, db 6)'                      │
+│ 41      │ 'B: audit log API returns exactly own rows'             │ 'PASS (status 200, api 6, db 6)'                      │
 │ 42      │ "B: audit log hides other users' probes of own finding" │ 'PASS (leaked rows 0)'                                │
-│ 43      │ 'audit log API paginates with a cursor'                 │ 'FAIL (status 404, rows undefined, cursor no)'        │
-│ 44      │ 'audit log API rejects an invalid filter'               │ 'FAIL (status 404)'                                   │
+│ 43      │ 'audit log API paginates with a cursor'                 │ 'PASS (status 200, rows 1, cursor yes)'               │
+│ 44      │ 'audit log API rejects an invalid filter'               │ 'PASS (status 400)'                                   │
 │ 45      │ 'wrong password returns 401'                            │ 'PASS (status 401)'                                   │
 │ 46      │ "audit log records A's registration"                    │ 'PASS (count 1)'                                      │
 │ 47      │ "audit log records A's successful login"                │ 'PASS (count 1)'                                      │
@@ -59,4 +59,4 @@ Database host: localhost
 │ 49      │ 'rate limit returns 429 after the limit'                │ 'PASS (4 of 12 calls limited)'                        │
 └─────────┴─────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────┘
 
-SOME CHECKS FAILED (5 of 50)
+ALL 50 CHECKS PASSED

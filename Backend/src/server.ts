@@ -16,6 +16,7 @@ import remediationRoutes from "./routes/remediation.routes";
 import authRoutes from "./routes/auth.routes";
 import awsRoutes from "./routes/aws.routes";
 import aiRoutes from "./routes/ai.routes";
+import auditLogRoutes from "./routes/auditLog.routes";
 
 import { validateEnvironment } from "./config/env";
 
@@ -51,6 +52,7 @@ app.use("/api/remediation", remediationRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/aws", awsRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/audit-logs", auditLogRoutes);
 
 /* 404 handler */
 app.use(
