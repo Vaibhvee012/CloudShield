@@ -144,3 +144,9 @@ export const getDashboardAIInsight = (refresh = false) =>
   );
   export const getAuditLogs = (limit = 25) =>
   request(`/audit-logs?limit=${limit}`, "Failed to fetch audit logs");
+
+  export const chatWithAI = (question: string) =>
+  request("/ai/chat", "Failed to get an AI response", {
+    method: "POST",
+    body: { question },
+  });
