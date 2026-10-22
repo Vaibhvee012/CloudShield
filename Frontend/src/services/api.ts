@@ -142,3 +142,5 @@ export const getDashboardAIInsight = (refresh = false) =>
     `/ai/dashboard/insight${refresh ? "?refresh=1" : ""}`,
     "Failed to fetch dashboard AI insight"
   );
+  export const getAuditLogs = (limit = 25) =>
+  request(`/audit-logs?limit=${limit}`, "Failed to fetch audit logs");
