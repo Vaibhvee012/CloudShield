@@ -163,3 +163,7 @@ export const getAuditLogs = (
     method: "POST",
     body: { question },
   });
+
+
+  export const getAWSConnections = () =>
+  request("/aws/connections", "Failed to fetch AWS connections");

@@ -1,15 +1,40 @@
+import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 import {
   Bell,
+  Cloud,
   KeyRound,
   Lock,
   Palette,
-  Save,
   Settings as SettingsIcon,
   Shield,
   User,
-  Check,
 } from "lucide-react";
-import { useState } from "react";
+
+import { useApiData } from "../hooks/useApiData";
+import { getAWSConnections } from "../services/api";
+
+interface AWSConnectionRow {
+  id: string;
+  accountId: string;
+  region: string;
+  status: string;
+  lastSyncAt: string | null;
+}
+
+const formatRole = (role: string) =>
+  role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+
+const formatDate = (iso: string) => {
+  const date = new Date(iso);
+
+  if (Number.isNaN(date.getTime())) return "Unknown";
+
+  return date.toLocaleString([], {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+};
 
 function Settings() {
   const storedUser = localStorage.getItem("cloudshield_user");
@@ -24,11 +49,22 @@ function Settings() {
     }
   }
 
-  const userName = user?.name || "CloudShield User";
+  const userName = user?.name || "Not available";
   const userEmail = user?.email || "Not available";
+  const userRole =
+    typeof user?.role === "string" && user.role
+      ? formatRole(user.role)
+      : "Not available";
 
-  const [securityAlerts, setSecurityAlerts] = useState(true);
-  const [remediationUpdates, setRemediationUpdates] = useState(true);
+  const {
+    data: connections,
+    loading: connectionsLoading,
+    error: connectionsError,
+    reload: reloadConnections,
+  } = useApiData<AWSConnectionRow[]>(
+    getAWSConnections,
+    "Failed to load AWS connections"
+  );
 
   return (
     <div className="space-y-6">
@@ -45,7 +81,7 @@ function Settings() {
             </h1>
 
             <p className="mt-1 text-sm text-gray-500">
-              Manage your CloudShield account and preferences.
+              Your CloudShield account and connections.
             </p>
           </div>
         </div>
@@ -61,7 +97,7 @@ function Settings() {
               <h2 className="text-sm font-semibold text-white">Account</h2>
 
               <p className="mt-1 text-xs text-gray-600">
-                Your CloudShield account information.
+                The account you are signed in with.
               </p>
             </div>
           </div>
@@ -72,13 +108,103 @@ function Settings() {
 
           <SettingField label="Email" value={userEmail} />
 
-          <SettingField
-            label="Role"
-            value={user?.role || "Administrator"}
-          />
+          <SettingField label="Role" value={userRole} />
 
-          <SettingField label="Account Status" value="Active" />
+          <SettingField label="Sign-in method" value="Email and password" />
         </div>
+      </section>
+
+      {/* AWS connections */}
+      <section className="rounded-2xl border border-white/10 bg-[#0B0914]">
+        <div className="flex items-center justify-between gap-4 border-b border-white/10 px-6 py-5">
+          <div className="flex items-center gap-3">
+            <Cloud size={18} className="text-[#A78BFA]" />
+
+            <div>
+              <h2 className="text-sm font-semibold text-white">
+                AWS connections
+              </h2>
+
+              <p className="mt-1 text-xs text-gray-600">
+                AWS accounts CloudShield can read from.
+              </p>
+            </div>
+          </div>
+
+          <Link
+            to="/connect"
+            className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs text-gray-300 transition hover:border-[#8B5CF6]/30 hover:text-white"
+          >
+            Connect an account
+          </Link>
+        </div>
+
+        {connectionsLoading ? (
+          <p className="px-6 py-8 text-sm text-gray-500">
+            Loading connections...
+          </p>
+        ) : connectionsError ? (
+          <div className="px-6 py-6">
+            <p className="text-sm text-red-300">{connectionsError}</p>
+
+            <button
+              type="button"
+              onClick={reloadConnections}
+              className="mt-3 rounded-lg border border-white/10 px-3 py-2 text-xs text-gray-300 hover:border-[#8B5CF6]/30 hover:text-white"
+            >
+              Try again
+            </button>
+          </div>
+        ) : !connections || connections.length === 0 ? (
+          <div className="px-6 py-10 text-center">
+            <Cloud size={30} className="mx-auto text-gray-600" />
+
+            <p className="mt-3 text-sm text-gray-300">
+              No AWS account connected
+            </p>
+
+            <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-gray-600">
+              Connect an AWS account to start scanning your environment.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-white/5">
+            {connections.map((connection) => (
+              <div
+                key={connection.id}
+                className="flex flex-col gap-2 px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-medium text-white">
+                      Account {connection.accountId}
+                    </p>
+
+                    <span
+                      className={`rounded-lg px-2.5 py-1 text-[10px] font-semibold uppercase ${
+                        connection.status === "CONNECTED"
+                          ? "bg-[#22C55E]/10 text-[#22C55E]"
+                          : "bg-white/5 text-gray-400"
+                      }`}
+                    >
+                      {connection.status.toLowerCase()}
+                    </span>
+                  </div>
+
+                  <p className="mt-1 text-xs text-gray-600">
+                    Region {connection.region}
+                  </p>
+                </div>
+
+                <p className="text-xs text-gray-500">
+                  {connection.lastSyncAt
+                    ? `Last scan ${formatDate(connection.lastSyncAt)}`
+                    : "Not scanned yet"}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Security */}
@@ -91,7 +217,7 @@ function Settings() {
               <h2 className="text-sm font-semibold text-white">Security</h2>
 
               <p className="mt-1 text-xs text-gray-600">
-                Manage account security settings.
+                How your account is protected.
               </p>
             </div>
           </div>
@@ -101,15 +227,15 @@ function Settings() {
           <SettingRow
             icon={<Lock size={17} />}
             title="Password"
-            description="Change your account password."
-            action="Change"
+            description="Changing your password from within CloudShield is not available yet."
+            status="Not available yet"
           />
 
           <SettingRow
             icon={<KeyRound size={17} />}
-            title="Authentication"
-            description="JWT-based authentication is enabled."
-            action="Enabled"
+            title="Sessions"
+            description="You stay signed in for up to 24 hours, then you are asked to sign in again."
+            status="24 hour sessions"
           />
         </div>
       </section>
@@ -126,26 +252,28 @@ function Settings() {
               </h2>
 
               <p className="mt-1 text-xs text-gray-600">
-                Configure security notification preferences.
+                How CloudShield keeps you informed.
               </p>
             </div>
           </div>
         </div>
 
-        <div className="divide-y divide-white/5">
-          <ToggleRow
-            title="Security Alerts"
-            description="Receive alerts for critical security findings."
-            enabled={securityAlerts}
-            onToggle={() => setSecurityAlerts((current) => !current)}
-          />
+        <div className="px-6 py-5">
+          <p className="text-sm text-gray-300">
+            Email and in-app alerts are not available yet.
+          </p>
 
-          <ToggleRow
-            title="Remediation Updates"
-            description="Receive updates when remediation actions change."
-            enabled={remediationUpdates}
-            onToggle={() => setRemediationUpdates((current) => !current)}
-          />
+          <p className="mt-1 text-xs leading-5 text-gray-600">
+            In the meantime, sign-ins, scans, AI requests and blocked access
+            attempts are recorded in your{" "}
+            <Link
+              to="/audit-logs"
+              className="text-[#A78BFA] hover:text-[#C4B5FD]"
+            >
+              Audit Logs
+            </Link>
+            , and new findings appear on your Dashboard after each scan.
+          </p>
         </div>
       </section>
 
@@ -161,7 +289,7 @@ function Settings() {
               </h2>
 
               <p className="mt-1 text-xs text-gray-600">
-                Customize the CloudShield interface.
+                The CloudShield interface.
               </p>
             </div>
           </div>
@@ -172,7 +300,7 @@ function Settings() {
             <p className="text-sm font-medium text-white">Theme</p>
 
             <p className="mt-1 text-xs text-gray-600">
-              CloudShield is currently using the Midnight theme.
+              CloudShield currently has one theme.
             </p>
           </div>
 
@@ -181,19 +309,6 @@ function Settings() {
           </div>
         </div>
       </section>
-
-      {/* Save */}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          disabled
-          className="flex items-center gap-2 rounded-lg bg-[#8B5CF6] px-5 py-2.5 text-sm font-medium text-white opacity-50"
-          title="Settings API not connected yet"
-        >
-          <Save size={16} />
-          Save Changes
-        </button>
-      </div>
     </div>
   );
 }
@@ -207,9 +322,9 @@ function SettingField({
 }) {
   return (
     <div>
-      <label className="text-xs font-medium text-gray-500">{label}</label>
+      <p className="text-xs font-medium text-gray-500">{label}</p>
 
-      <div className="mt-2 rounded-lg border border-white/10 bg-white/[0.025] px-4 py-3 text-sm text-gray-300">
+      <div className="mt-2 truncate rounded-lg border border-white/10 bg-white/[0.025] px-4 py-3 text-sm text-gray-300">
         {value}
       </div>
     </div>
@@ -220,17 +335,17 @@ function SettingRow({
   icon,
   title,
   description,
-  action,
+  status,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   title: string;
   description: string;
-  action: string;
+  status: string;
 }) {
   return (
     <div className="flex items-center justify-between gap-4 px-6 py-5">
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/[0.04] text-gray-400">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.04] text-gray-400">
           {icon}
         </div>
 
@@ -241,54 +356,9 @@ function SettingRow({
         </div>
       </div>
 
-      <button
-        type="button"
-        disabled
-        className="rounded-lg border border-white/10 px-3 py-2 text-xs text-gray-500"
-      >
-        {action}
-      </button>
-    </div>
-  );
-}
-
-function ToggleRow({
-  title,
-  description,
-  enabled,
-  onToggle,
-}: {
-  title: string;
-  description: string;
-  enabled: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 px-6 py-5">
-      <div>
-        <p className="text-sm font-medium text-white">{title}</p>
-
-        <p className="mt-1 text-xs text-gray-600">{description}</p>
-      </div>
-
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-label={`${title} ${enabled ? "enabled" : "disabled"}`}
-        className={`relative h-6 w-11 rounded-full transition ${
-          enabled ? "bg-[#8B5CF6]" : "bg-white/10"
-        }`}
-      >
-        <div
-          className={`absolute top-1 flex h-4 w-4 items-center justify-center rounded-full bg-white transition ${
-            enabled ? "left-6" : "left-1"
-          }`}
-        >
-          {enabled && (
-            <Check size={10} className="text-[#8B5CF6]" />
-          )}
-        </div>
-      </button>
+      <span className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs text-gray-500">
+        {status}
+      </span>
     </div>
   );
 }
