@@ -142,8 +142,21 @@ export const getDashboardAIInsight = (refresh = false) =>
     `/ai/dashboard/insight${refresh ? "?refresh=1" : ""}`,
     "Failed to fetch dashboard AI insight"
   );
-  export const getAuditLogs = (limit = 25) =>
-  request(`/audit-logs?limit=${limit}`, "Failed to fetch audit logs");
+export const getAuditLogs = (
+  limit = 25,
+  filters: { cursor?: string; action?: string; outcome?: string } = {}
+) => {
+  const params = new URLSearchParams({ limit: String(limit) });
+
+  if (filters.cursor) params.set("cursor", filters.cursor);
+  if (filters.action) params.set("action", filters.action);
+  if (filters.outcome) params.set("outcome", filters.outcome);
+
+  return request(
+    `/audit-logs?${params.toString()}`,
+    "Failed to fetch audit logs"
+  );
+};
 
   export const chatWithAI = (question: string) =>
   request("/ai/chat", "Failed to get an AI response", {
