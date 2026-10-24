@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Cloud, Database, Server } from "lucide-react";
 
 interface Resource {
@@ -76,7 +76,10 @@ function CloudMap({ resources }: CloudMapProps) {
 
   const [lines, setLines] = useState<Line[]>([]);
 
-  const visible = resources.slice(0, MAX_VISIBLE);
+  const visible = useMemo(
+    () => resources.slice(0, MAX_VISIBLE),
+    [resources]
+  );
 
   const measure = useCallback(() => {
     const container = containerRef.current;
@@ -118,11 +121,10 @@ function CloudMap({ resources }: CloudMapProps) {
       });
     });
 
-    setLines(nextLines);
-  }, [visible.map((resource) => resource.id).join("|")]);
+    setLines(nextLines); 
+   }, [visible]);
 
   useLayoutEffect(() => {
-    measure();
 
     const container = containerRef.current;
 

@@ -181,6 +181,69 @@ const InsightText = ({ text }: { text: string }) => {
   );
 };
 
+type DashboardResult = {
+  security: SecurityData;
+  findings: Finding[];
+  remediationCount: number;
+  lastSyncedAt: string | null;
+  awsResources: ResourceRow[];
+  activity: AuditRow[];
+};
+
+/*
+ * Pure request functions: they return data and never set state.
+ * No made-up fallback values: a failure is thrown to the caller.
+ */
+async function requestDashboardData(): Promise<DashboardResult> {
+  const [
+    securityResponse,
+    findingsResponse,
+    remediationResponse,
+    syncStatusResponse,
+    awsResourcesResponse,
+    auditResponse,
+  ] = await Promise.all([
+    getSecurityPosture(),
+    getFindings(),
+    getRemediationActions(),
+    getAWSSyncStatus(),
+    getAWSResources(),
+    // Activity is nice to have: it must never break the dashboard.
+    getAuditLogs(6).catch(() => null),
+  ]);
+
+  const data = securityResponse?.data;
+
+  return {
+    security: {
+      state: data?.state ?? "NOT_CONNECTED",
+      score: data?.securityScore ?? null,
+      totalFindings: data?.totalFindings ?? 0,
+      critical: data?.severity?.critical ?? 0,
+      high: data?.severity?.high ?? 0,
+      medium: data?.severity?.medium ?? 0,
+      low: data?.severity?.low ?? 0,
+      resourcesTotal: data?.resources?.total ?? 0,
+      healthyResources: data?.resources?.healthy ?? 0,
+      healthPercentage: data?.resources?.healthPercentage ?? 0,
+    },
+    findings: findingsResponse?.data ?? [],
+    remediationCount: (remediationResponse?.data ?? []).length,
+    lastSyncedAt: syncStatusResponse?.data?.lastSyncedAt ?? null,
+    awsResources: awsResourcesResponse?.data ?? [],
+    activity: auditResponse?.data ?? [],
+  };
+}
+
+async function requestInsight(refresh: boolean): Promise<InsightState> {
+  const response = await getDashboardAIInsight(refresh);
+
+  return {
+    state: response?.data?.state ?? "READY",
+    text: response?.data?.insight ?? "",
+  };
+}
+
 const Dashboard = () => {
   const [security, setSecurity] = useState<SecurityData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -196,75 +259,37 @@ const Dashboard = () => {
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
 
   const [insight, setInsight] = useState<InsightState | null>(null);
-  const [insightLoading, setInsightLoading] = useState(false);
+  const [insightLoading, setInsightLoading] = useState(true);
   const [insightError, setInsightError] = useState("");
 
-  /*
-   * Load dashboard data. No made-up fallback values: on failure the page
-   * shows an error with a retry button.
-   */
+  const applyDashboardData = useCallback((result: DashboardResult) => {
+    setSecurity(result.security);
+    setFindings(result.findings);
+    setRemediationCount(result.remediationCount);
+    setLastSyncedAt(result.lastSyncedAt);
+    setAWSResources(result.awsResources);
+    setActivity(result.activity);
+    setLoadError("");
+  }, []);
+
+  // Used by Try again and after a scan (event handlers).
   const loadDashboardData = useCallback(async () => {
     try {
-      setLoadError("");
-
-      const [
-        securityResponse,
-        findingsResponse,
-        remediationResponse,
-        syncStatusResponse,
-        awsResourcesResponse,
-        auditResponse,
-      ] = await Promise.all([
-        getSecurityPosture(),
-        getFindings(),
-        getRemediationActions(),
-        getAWSSyncStatus(),
-        getAWSResources(),
-        // Activity is nice to have: it must never break the dashboard.
-        getAuditLogs(6).catch(() => null),
-      ]);
-
-      const data = securityResponse?.data;
-
-      setSecurity({
-        state: data?.state ?? "NOT_CONNECTED",
-        score: data?.securityScore ?? null,
-        totalFindings: data?.totalFindings ?? 0,
-        critical: data?.severity?.critical ?? 0,
-        high: data?.severity?.high ?? 0,
-        medium: data?.severity?.medium ?? 0,
-        low: data?.severity?.low ?? 0,
-        resourcesTotal: data?.resources?.total ?? 0,
-        healthyResources: data?.resources?.healthy ?? 0,
-        healthPercentage: data?.resources?.healthPercentage ?? 0,
-      });
-
-      setFindings(findingsResponse?.data ?? []);
-      setRemediationCount((remediationResponse?.data ?? []).length);
-      setLastSyncedAt(syncStatusResponse?.data?.lastSyncedAt ?? null);
-      setAWSResources(awsResourcesResponse?.data ?? []);
-      setActivity(auditResponse?.data ?? []);
+      applyDashboardData(await requestDashboardData());
     } catch (error) {
       setLoadError(errorMessage(error, "Failed to load dashboard data."));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [applyDashboardData]);
 
-  /*
-   * CloudShield AI dashboard insight. refresh=true forces a new one.
-   */
+  // CloudShield AI dashboard insight. refresh=true forces a new one.
   const fetchInsight = useCallback(async (refresh = false) => {
     try {
       setInsightLoading(true);
       setInsightError("");
 
-      const response = await getDashboardAIInsight(refresh);
-
-      setInsight({
-        state: response?.data?.state ?? "READY",
-        text: response?.data?.insight ?? "",
-      });
+      setInsight(await requestInsight(refresh));
     } catch (error) {
       setInsightError(
         errorMessage(
@@ -277,20 +302,55 @@ const Dashboard = () => {
     }
   }, []);
 
+  // First load: state is only set inside promise callbacks.
   useEffect(() => {
-    loadDashboardData();
-    fetchInsight();
-  }, [loadDashboardData, fetchInsight]);
+    let active = true;
 
-  const handleRetry = () => {
+    requestDashboardData()
+      .then((result) => {
+        if (!active) return;
+
+        applyDashboardData(result);
+        setLoading(false);
+      })
+      .catch((error) => {
+        if (!active) return;
+
+        setLoadError(errorMessage(error, "Failed to load dashboard data."));
+        setLoading(false);
+      });
+
+    requestInsight(false)
+      .then((result) => {
+        if (!active) return;
+
+        setInsight(result);
+        setInsightLoading(false);
+      })
+      .catch((error) => {
+        if (!active) return;
+
+        setInsightError(
+          errorMessage(
+            error,
+            "Unable to generate a security insight right now."
+          )
+        );
+        setInsightLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [applyDashboardData]);
+  /*
+   * Run a scan of all of this user's AWS connections
+   */
+    const handleRetry = () => {
     setLoading(true);
     loadDashboardData();
     fetchInsight();
   };
-
-  /*
-   * Run a scan of all of this user's AWS connections
-   */
   const handleAWSSync = async () => {
     try {
       setSyncing(true);
@@ -1333,10 +1393,13 @@ const FindingCard = ({
         </div>
       </div>
 
-      <button className="mt-3 flex items-center gap-1 text-[10px] text-purple-300 opacity-0 transition group-hover:opacity-100">
-        Investigate
+      <Link
+        to="/findings"
+        className="mt-3 flex items-center gap-1 text-[10px] text-purple-300 opacity-100 transition hover:text-purple-200 sm:opacity-0 sm:group-hover:opacity-100"
+      >
+        View findings
         <ArrowUpRight className="h-3 w-3" />
-      </button>
+      </Link>
     </div>
   );
 };

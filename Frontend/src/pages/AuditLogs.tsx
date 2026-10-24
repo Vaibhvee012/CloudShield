@@ -111,9 +111,34 @@ function AuditLogs() {
     []
   );
 
+  // First load: state is only set inside promise callbacks.
   useEffect(() => {
-    loadFirst("", "");
-  }, [loadFirst]);
+    let active = true;
+    const id = requestId.current;
+
+    getAuditLogs(PAGE_SIZE)
+      .then((response) => {
+        // Ignore this answer if a filter was clicked in the meantime.
+        if (!active || id !== requestId.current) return;
+
+        setEvents(response?.data ?? []);
+        setNextCursor(response?.nextCursor ?? null);
+        setError("");
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (!active || id !== requestId.current) return;
+
+        setError(
+          err instanceof ApiError ? err.message : "Failed to load audit logs"
+        );
+        setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const changeOutcome = (value: string) => {
     setOutcome(value);

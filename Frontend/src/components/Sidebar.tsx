@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   Cloud,
@@ -8,8 +9,12 @@ import {
   FileClock,
   Settings,
   Shield,
+  X,
 } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
+
+import type { ConnectionState } from "../hooks/useApiData";
+import { getSecurityPosture } from "../services/api";
 
 const navigation = [
   {
@@ -49,11 +54,96 @@ const navigation = [
   },
 ];
 
-function Sidebar() {
+type SidebarStatus =
+  | { state: ConnectionState; totalFindings: number }
+  | "error"
+  | null;
+
+function Sidebar({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const { pathname } = useLocation();
+  const [status, setStatus] = useState<SidebarStatus>(null);
+
+  // Re-check when you move between pages, so the card never goes stale.
+  useEffect(() => {
+    let active = true;
+
+    getSecurityPosture()
+      .then((response) => {
+        if (!active) return;
+
+        setStatus({
+          state: response?.data?.state ?? "NOT_CONNECTED",
+          totalFindings: response?.data?.totalFindings ?? 0,
+        });
+      })
+      .catch(() => {
+        if (active) setStatus("error");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [pathname]);
+
+  const statusView = (() => {
+    if (status === null) {
+      return {
+        dot: "bg-gray-600",
+        title: "Checking status...",
+        detail: "",
+      };
+    }
+
+    if (status === "error") {
+      return {
+        dot: "bg-gray-600",
+        title: "Status unavailable",
+        detail: "Could not reach CloudShield",
+      };
+    }
+
+    if (status.state === "NOT_CONNECTED") {
+      return {
+        dot: "bg-gray-500",
+        title: "No AWS account connected",
+        detail: "Connect one to start scanning",
+      };
+    }
+
+    if (status.state === "NO_DATA") {
+      return {
+        dot: "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]",
+        title: "AWS account connected",
+        detail: "Waiting for your first scan",
+      };
+    }
+
+    return {
+      dot: "bg-[#22C55E] shadow-[0_0_8px_rgba(34,197,94,0.6)]",
+      title: "AWS account connected",
+      detail:
+        status.totalFindings === 0
+          ? "No open findings"
+          : `${status.totalFindings} open finding${
+              status.totalFindings === 1 ? "" : "s"
+            }`,
+    };
+  })();
+
   return (
-    <aside className="flex min-h-screen w-64 shrink-0 flex-col border-r border-white/10 bg-[#0B0914] text-white">
+    <aside
+      className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col border-r border-white/10 bg-[#0B0914] text-white transition-transform duration-200 lg:static lg:min-h-screen lg:translate-x-0 ${
+        open ? "translate-x-0" : "-translate-x-full"
+      }`}
+    >
       {/* Logo */}
-      <div className="flex h-20 shrink-0 items-center border-b border-white/10 px-6">
+      <div className="flex h-20 shrink-0 items-center justify-between border-b border-white/10 px-6">
         <div className="flex items-center gap-3">
           {/* Logo Icon */}
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#8B5CF6] shadow-[0_0_25px_rgba(139,92,246,0.35)]">
@@ -71,6 +161,15 @@ function Sidebar() {
             </p>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close menu"
+          className="rounded-lg p-2 text-gray-400 hover:bg-white/5 hover:text-white lg:hidden"
+        >
+          <X size={18} />
+        </button>
       </div>
 
       {/* Navigation */}
@@ -87,6 +186,7 @@ function Sidebar() {
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={onClose}
               className={({ isActive }) =>
                 `group relative flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ${
                   isActive
@@ -131,6 +231,7 @@ function Sidebar() {
       <div className="shrink-0 border-t border-white/10 p-3">
         <NavLink
           to="/settings"
+          onClick={onClose}
           className={({ isActive }) =>
             `group flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ${
               isActive
@@ -148,19 +249,21 @@ function Sidebar() {
           <span>Settings</span>
         </NavLink>
 
-        {/* Security Status */}
+        {/* Connection status: reflects the real state of your account */}
         <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-3">
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-[#22C55E] shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+            <span className={`h-2 w-2 shrink-0 rounded-full ${statusView.dot}`} />
 
             <span className="text-[11px] font-medium text-gray-400">
-              System Protected
+              {statusView.title}
             </span>
           </div>
 
-          <p className="mt-1 pl-4 text-[9px] text-gray-600">
-            CloudShield security active
-          </p>
+          {statusView.detail && (
+            <p className="mt-1 pl-4 text-[9px] text-gray-600">
+              {statusView.detail}
+            </p>
+          )}
         </div>
       </div>
     </aside>
