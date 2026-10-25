@@ -9,7 +9,10 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "postinstall": "prisma skills sync || exit 0",
-    "check:isolation": "tsx prisma/check-isolation.ts"
+    "check:isolation": "tsx prisma/check-isolation.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:db:setup": "tsx prisma/setup-test-db.ts"
   },
   "keywords": [],
   "author": "",
