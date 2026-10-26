@@ -1,7 +1,7 @@
-
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { z } from "zod";
 import prisma from "../lib/prisma";
 import { writeAudit, AuditAction } from "../lib/auditLog";
 
@@ -10,25 +10,57 @@ const getJWTSecret = (): string | null => {
   return secret?.trim() ? secret : null;
 };
 
+// bcrypt only uses the first 72 bytes of a password.
+const MAX_PASSWORD_BYTES = 72;
+
+const registerSchema = z.object({
+  name: z
+    .string({ error: "Name is required" })
+    .trim()
+    .min(1, "Name is required")
+    .max(100, "Name must be 100 characters or less"),
+  email: z
+    .string({ error: "Email is required" })
+    .trim()
+    .toLowerCase()
+    .max(254, "Email is too long")
+    .pipe(z.email("Enter a valid email address")),
+  password: z
+    .string({ error: "Password is required" })
+    .min(8, "Password must be at least 8 characters long")
+    .refine(
+      (value) => Buffer.byteLength(value, "utf8") <= MAX_PASSWORD_BYTES,
+      `Password must be at most ${MAX_PASSWORD_BYTES} bytes long`,
+    ),
+});
+
+const loginSchema = z.object({
+  email: z
+    .string({ error: "Email and password are required" })
+    .trim()
+    .toLowerCase()
+    .min(1, "Email and password are required")
+    .max(254, "Invalid email or password"),
+  password: z
+    .string({ error: "Email and password are required" })
+    .min(1, "Email and password are required")
+    .max(200, "Invalid email or password"),
+});
+
 export const register = async (req: Request, res: Response) => {
   try {
-    const name = String(req.body.name ?? "").trim();
-    const email = String(req.body.email ?? "").trim().toLowerCase();
-    const password = String(req.body.password ?? "");
+    const parsed = registerSchema.safeParse(req.body ?? {});
 
-    if (!name || !email || !password) {
+    if (!parsed.success) {
       return res.status(400).json({
         success: false,
-        message: "Name, email and password are required",
+        message:
+          parsed.error.issues[0]?.message ?? "Invalid registration details",
+        errors: parsed.error.flatten().fieldErrors,
       });
     }
 
-    if (password.length < 8) {
-      return res.status(400).json({
-        success: false,
-        message: "Password must be at least 8 characters long",
-      });
-    }
+    const { name, email, password } = parsed.data;
 
     const secret = getJWTSecret();
 
@@ -113,15 +145,17 @@ export const register = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const email = String(req.body.email ?? "").trim().toLowerCase();
-    const password = String(req.body.password ?? "");
+    const parsed = loginSchema.safeParse(req.body ?? {});
 
-    if (!email || !password) {
+    if (!parsed.success) {
       return res.status(400).json({
         success: false,
-        message: "Email and password are required",
+        message:
+          parsed.error.issues[0]?.message ?? "Email and password are required",
       });
     }
+
+    const { email, password } = parsed.data;
 
     const secret = getJWTSecret();
 

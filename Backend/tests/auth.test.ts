@@ -42,6 +42,14 @@ describe("registration", () => {
     expect(user!.password.startsWith("$2")).toBe(true);
   });
 
+  it("trims and lowercases the email before saving it", async () => {
+    const email = uniqueEmail("mixed");
+    const res = await register(`  ${email.toUpperCase()}  `);
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.email).toBe(email);
+  });
+
   it("rejects a duplicate email regardless of letter case", async () => {
     const email = uniqueEmail("dup");
 
@@ -49,18 +57,6 @@ describe("registration", () => {
     const res = await register(email.toUpperCase());
 
     expect(res.status).toBe(409);
-  });
-
-  it("rejects a password shorter than 8 characters", async () => {
-    const res = await register(uniqueEmail("short"), "short");
-
-    expect(res.status).toBe(400);
-  });
-
-  it("rejects missing fields", async () => {
-    const res = await request(app).post("/api/auth/register").send({});
-
-    expect(res.status).toBe(400);
   });
 
   it("writes an audit entry", async () => {
@@ -77,6 +73,52 @@ describe("registration", () => {
     });
 
     expect(count).toBe(1);
+  });
+});
+
+describe("registration validation", () => {
+  it("rejects a password shorter than 8 characters", async () => {
+    const res = await register(uniqueEmail("short"), "short");
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/at least 8/i);
+  });
+
+  it("rejects a password longer than 72 bytes", async () => {
+    const res = await register(uniqueEmail("long"), "a".repeat(73));
+
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects an invalid email address", async () => {
+    const res = await register("not-an-email");
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/valid email/i);
+  });
+
+  it("rejects a name that is too long", async () => {
+    const res = await register(uniqueEmail("name"), TEST_PASSWORD, "x".repeat(101));
+
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects missing fields", async () => {
+    const res = await request(app).post("/api/auth/register").send({});
+
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects values that are not strings", async () => {
+    const res = await request(app)
+      .post("/api/auth/register")
+      .send({
+        name: "Vitest User",
+        email: uniqueEmail("object"),
+        password: { nested: "object-password" },
+      });
+
+    expect(res.status).toBe(400);
   });
 });
 
@@ -100,6 +142,22 @@ describe("login", () => {
     const res = await login(email.toUpperCase());
 
     expect(res.status).toBe(200);
+  });
+
+  it("rejects a request with no password", async () => {
+    const res = await request(app)
+      .post("/api/auth/login")
+      .send({ email: uniqueEmail("nopass") });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects an object where the password should be", async () => {
+    const res = await request(app)
+      .post("/api/auth/login")
+      .send({ email: uniqueEmail("obj"), password: { $ne: "x" } });
+
+    expect(res.status).toBe(400);
   });
 
   it("gives the same answer for a wrong password and an unknown email", async () => {
@@ -212,9 +270,7 @@ describe("protected routes", () => {
     expect(res.status).toBe(403);
   });
 
-  // KNOWN GAP, fixed in 12.2: a deleted user's token keeps working.
-  // it.fails passes while the gap exists. In 12.2 we change it to a normal it().
-  it.fails("rejects a token whose user was deleted", async () => {
+  it("rejects a token whose user was deleted", async () => {
     const email = uniqueEmail("deleted");
     await register(email);
     const { body } = await login(email);

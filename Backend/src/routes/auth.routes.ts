@@ -8,12 +8,16 @@ import {
   AuthRequest,
   authorize,
 } from "../middleware/auth.middleware";
+import {
+  loginRateLimiter,
+  registerRateLimiter,
+} from "../middleware/authRateLimit";
 
 const router = Router();
 
-router.post("/register", register);
+router.post("/register", registerRateLimiter, register);
 
-router.post("/login", login);
+router.post("/login", loginRateLimiter, login);
 
 router.get("/me", authenticate, (req: AuthRequest, res: Response) => {
   res.json({
