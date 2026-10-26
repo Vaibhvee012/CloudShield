@@ -19,6 +19,7 @@ import aiRoutes from "./routes/ai.routes";
 import auditLogRoutes from "./routes/auditLog.routes";
 
 import { validateEnvironment } from "./config/env";
+import { errorHandler } from "./middleware/errorHandler";
 
 const app = express();
 
@@ -68,20 +69,6 @@ app.use(
 );
 
 /* Global error handler */
-app.use(
-  (
-    error: unknown,
-    _req: Request,
-    res: Response,
-    _next: NextFunction,
-  ) => {
-    console.error("Unhandled server error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  },
-);
+app.use(errorHandler);
 
 export default app;
