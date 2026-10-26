@@ -7,7 +7,7 @@ export const TEST_PASSWORD = "TestPassw0rd!";
 export const uniqueEmail = (label: string) =>
   `vitest-${label}-${Date.now()}-${Math.random()
     .toString(36)
-    .slice(2, 8)}@example.com`;
+    .slice(2, 8)}@example.com`.toLowerCase();
 
 // Safe because setup.ts guarantees this is a local *_test database.
 export async function cleanupTestUsers() {
