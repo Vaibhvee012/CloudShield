@@ -11,6 +11,11 @@ process.env.AWS_SECRET_ACCESS_KEY ??= "test-secret-key";
 process.env.AWS_REGION ??= "us-east-1";
 process.env.FRONTEND_URL ??= "http://localhost:5173";
 
+// prisma.ts loads the real .env, which can leak development values into the
+// tests. Pin every setting the tests depend on.
+process.env.AUTH_LOGIN_LIMIT = "10";
+process.env.AUTH_REGISTER_LIMIT = "10";
+
 // Safety: tests create and delete data. Local *_test databases only.
 const databaseUrl = process.env.DATABASE_URL;
 
