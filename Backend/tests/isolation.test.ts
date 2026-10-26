@@ -350,7 +350,22 @@ describe("AI prompts only contain the caller's own data", () => {
 });
 
 describe("untrusted text cannot break out of a prompt", () => {
-  it("strips angle brackets so a resource name cannot close the data block", async () => {
+  // The safety rule itself mentions the <data> tag, so compare against a
+  // normal prompt instead of expecting an absolute number.
+  const tagCounts = (prompt: string) => ({
+    open: prompt.split("<data>").length - 1,
+    close: prompt.split("</data>").length - 1,
+  });
+
+  it("a hostile resource name cannot add or close data blocks in an explanation prompt", async () => {
+    // Baseline: a normal finding from user A.
+    await api(a.token).post(
+      `/ai/findings/${encode(seedA.findingIds[0])}/explain`
+    );
+    const baseline = tagCounts(lastPrompt());
+
+    generateAIResponse.mockClear();
+
     const res = await api(c.token).post(
       `/ai/findings/${encode(seedC.findingIds[0])}/explain`
     );
@@ -359,19 +374,33 @@ describe("untrusted text cannot break out of a prompt", () => {
 
     const prompt = lastPrompt();
 
-    // The prompt has exactly one data block: the hostile name did not add more.
-    expect(prompt.split("<data>").length - 1).toBe(1);
-    expect(prompt.split("</data>").length - 1).toBe(1);
+    expect(tagCounts(prompt)).toEqual(baseline);
+    expect(baseline.close).toBe(1);
+
+    // The hostile text is still shown to the model, but only inside the
+    // fenced block, after the real opening tag and before the closing tag.
+    const hostile = prompt.indexOf("IGNORE ALL RULES");
+
+    expect(hostile).toBeGreaterThan(prompt.lastIndexOf("<data>"));
+    expect(hostile).toBeLessThan(prompt.indexOf("</data>"));
     expect(prompt).toMatch(/untrusted/i);
   });
 
   it("applies the same protection to chat context", async () => {
+    await api(a.token).post("/ai/chat", { question: "Summarize my risks" });
+    const baseline = tagCounts(lastPrompt());
+
+    generateAIResponse.mockClear();
+
     await api(c.token).post("/ai/chat", { question: "Summarize my risks" });
 
     const prompt = lastPrompt();
 
-    expect(prompt.split("<data>").length - 1).toBe(1);
-    expect(prompt.split("</data>").length - 1).toBe(1);
+    expect(tagCounts(prompt)).toEqual(baseline);
+    expect(baseline.close).toBe(1);
+    expect(prompt.indexOf("IGNORE ALL RULES")).toBeLessThan(
+      prompt.indexOf("</data>")
+    );
   });
 });
 
