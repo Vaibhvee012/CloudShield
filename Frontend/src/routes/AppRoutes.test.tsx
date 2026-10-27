@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -58,16 +58,24 @@ describe("public pages", () => {
     );
   });
 
+  // These pages' wording will keep changing, so this checks the routing
+  // (the right menu item is active and the page has a title), not the copy.
   it.each([
-    ["/platform", /One place to see your AWS security posture/],
-    ["/security", /Built to look, not to touch/],
-    ["/docs", /Getting started/],
-  ])("shows the page at %s", (path, heading) => {
+    ["/platform", "Platform"],
+    ["/security", "Security"],
+    ["/docs", "Documentation"],
+  ])("shows the page at %s", (path, menuItem) => {
     renderAt(path);
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      heading
+    const menu = within(screen.getByRole("navigation", { name: "Main" }));
+
+    expect(menu.getByRole("link", { name: menuItem })).toHaveAttribute(
+      "aria-current",
+      "page"
     );
+    expect(
+      screen.getByRole("heading", { level: 1 }).textContent?.trim()
+    ).toBeTruthy();
   });
 
   it("sends an unknown address to the landing page", () => {
