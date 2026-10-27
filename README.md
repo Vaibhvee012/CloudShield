@@ -135,30 +135,38 @@ Authentication tokens are used to protect application APIs and user-specific ope
 CloudShield follows a modular frontend/backend architecture.
 
 ```text
-                        CloudShield
+                       CLOUDSHIELD
                             |
               +-------------+-------------+
               |                           |
-          Frontend                    Backend API
+          FRONTEND                    BACKEND API
               |                           |
-      React + TypeScript            Node + Express
+      React + TypeScript            Node.js + Express
               |                           |
-      React Router / UI             Controllers
-      TanStack Query                Services
-      Recharts                      Middleware
-              |                           |
-              +-------------+-------------+
+      +-------+--------+          +-------+--------+
+      |        |       |          |        |       |
+   React    TanStack Recharts  Controllers Services Middleware
+   Router   Query              |        |       |
+              |                +--------+-------+
+              |                         |
+              +-------------+-----------+
                             |
-                         Prisma
+                       Prisma ORM
                             |
                        PostgreSQL
                             |
-                    CloudShield Data
+                     CloudShield Data
                             |
-                    +-------+-------+
-                    |               |
-                  AWS            Gemini
-               Integration         AI
+              +-------------+-------------+
+              |                           |
+       AWS INTEGRATION                 GEMINI AI
+       AWS SDK                         Google Gemini API
+              |                           |
+       S3, EC2, RDS, IAM          Security Explanations
+              |                  Risk Prioritization
+       Resource Discovery        Remediation Suggestions
+       Security Scanning
+       Findings & Risk Scoring
 ```
 
 ## Application Flow
