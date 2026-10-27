@@ -25,10 +25,15 @@ export const clearSession = () => {
   localStorage.removeItem(USER_KEY);
 };
 
+// Wrapped in an object so tests can see a redirect without a page navigation.
+export const navigation = {
+  toLogin: () => window.location.assign("/login"),
+};
+
 // Full page navigation on purpose: it also drops any data held in memory.
 export const signOut = () => {
   clearSession();
-  window.location.assign("/login");
+  navigation.toLogin();
 };
 
 const handleUnauthorized = () => {
@@ -39,7 +44,7 @@ const handleUnauthorized = () => {
       SESSION_NOTICE_KEY,
       "Your session expired. Please sign in again."
     );
-    window.location.assign("/login");
+    navigation.toLogin();
   }
 };
 
@@ -133,6 +138,9 @@ export const connectAWS = (connection: {
     body: connection,
   });
 
+export const getAWSConnections = () =>
+  request("/aws/connections", "Failed to fetch AWS connections");
+
 // ===============================
 // AI
 // ===============================
@@ -142,6 +150,17 @@ export const getDashboardAIInsight = (refresh = false) =>
     `/ai/dashboard/insight${refresh ? "?refresh=1" : ""}`,
     "Failed to fetch dashboard AI insight"
   );
+
+export const chatWithAI = (question: string) =>
+  request("/ai/chat", "Failed to get an AI response", {
+    method: "POST",
+    body: { question },
+  });
+
+// ===============================
+// Audit log
+// ===============================
+
 export const getAuditLogs = (
   limit = 25,
   filters: { cursor?: string; action?: string; outcome?: string } = {}
@@ -157,13 +176,3 @@ export const getAuditLogs = (
     "Failed to fetch audit logs"
   );
 };
-
-  export const chatWithAI = (question: string) =>
-  request("/ai/chat", "Failed to get an AI response", {
-    method: "POST",
-    body: { question },
-  });
-
-
-  export const getAWSConnections = () =>
-  request("/aws/connections", "Failed to fetch AWS connections");
